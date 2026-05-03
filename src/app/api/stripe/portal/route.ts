@@ -5,7 +5,7 @@ import { prisma } from "@/lib/db/client";
 
 export async function POST() {
   const session = await getRequiredSession();
-  const billing = await prisma.billing.findUnique({ where: { userId: session.user.id } });
+  const billing = await prisma.billing.findUnique({ where: { userId: session.user?.id as string } });
 
   if (!billing?.stripeCustomerId) {
     return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/settings/billing`);

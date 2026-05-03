@@ -20,7 +20,7 @@ export async function POST(req: Request) {
   const parsed = schema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: "Answer at least 3 prompts." }, { status: 400 });
 
-  const profile = await prisma.profile.findUnique({ where: { userId: session.user.id } });
+  const profile = await prisma.profile.findUnique({ where: { userId: session.user?.id as string } });
   if (!profile) return NextResponse.json({ error: "Complete earlier steps first." }, { status: 400 });
 
   // Upsert each answer
@@ -34,7 +34,7 @@ export async function POST(req: Request) {
 
   // Mark onboarding complete
   await prisma.user.update({
-    where: { id: session.user.id },
+    where: { id: session.user?.id as string },
     data: { onboardingComplete: true, onboardingStep: 6 },
   });
 

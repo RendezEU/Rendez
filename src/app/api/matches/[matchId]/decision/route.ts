@@ -16,8 +16,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ matchId
   const match = await prisma.match.findUnique({ where: { id: matchId } });
   if (!match) return NextResponse.json({ error: "Not found." }, { status: 404 });
 
-  const isA = match.userAId === session.user.id;
-  const isB = match.userBId === session.user.id;
+  const isA = match.userAId === session.user?.id as string;
+  const isB = match.userBId === session.user?.id as string;
   if (!isA && !isB) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
 
   const { accept } = parsed.data;
@@ -37,7 +37,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ matchId
 
     // Return credit if it was reserved
     await prisma.billing.updateMany({
-      where: { userId: session.user.id },
+      where: { userId: session.user?.id as string },
       data: { freeCreditsRemaining: { increment: 0 } }, // credits are consumed only on mutual accept
     });
   } else if (aDecided && bDecided && updated.userADecision && updated.userBDecision) {
@@ -56,7 +56,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ matchId
 
     const otherId = isA ? match.userBId : match.userAId;
     await triggerUserEvent(otherId, "match-accepted", { matchId });
-    await triggerUserEvent(session.user.id, "match-accepted", { matchId });
+    await triggerUserEvent(session.user?.id as string, "match-accepted", { matchId });
   } else {
     // One accepted, waiting for other
     await prisma.match.update({ where: { id: matchId }, data: { status: "PENDING_OTHER_DECISION" } });

@@ -14,7 +14,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ matchId:
 
   const match = await prisma.match.findUnique({ where: { id: matchId } });
   if (!match) return NextResponse.json({ error: "Not found." }, { status: 404 });
-  if (match.userAId !== session.user.id && match.userBId !== session.user.id) {
+  if (match.userAId !== session.user?.id as string && match.userBId !== session.user?.id as string) {
     return NextResponse.json({ error: "Forbidden." }, { status: 403 });
   }
 
@@ -36,7 +36,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ matchId
 
   const match = await prisma.match.findUnique({ where: { id: matchId } });
   if (!match) return NextResponse.json({ error: "Not found." }, { status: 404 });
-  if (match.userAId !== session.user.id && match.userBId !== session.user.id) {
+  if (match.userAId !== session.user?.id as string && match.userBId !== session.user?.id as string) {
     return NextResponse.json({ error: "Forbidden." }, { status: 403 });
   }
   if (!["COORDINATING", "CONFIRMED", "DATE_ACTIVE"].includes(match.status)) {
@@ -52,7 +52,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ matchId
   const message = await prisma.message.create({
     data: {
       matchId,
-      senderId: session.user.id,
+      senderId: session.user?.id as string,
       content: parsed.data.content,
       messageIndex: count + 1,
     },

@@ -6,7 +6,7 @@ import MatchDecision from "@/components/matches/MatchDecision";
 
 export default async function MatchesPage() {
   const session = await auth();
-  const userId = session!.user.id;
+  const userId = session?.user?.id as string;
 
   const matches = await prisma.match.findMany({
     where: {

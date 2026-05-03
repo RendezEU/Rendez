@@ -9,7 +9,7 @@ export async function POST(req: Request) {
   const type = formData.get("type") as string;
 
   const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
+    where: { id: session.user?.id as string },
     include: { billing: true },
   });
 
@@ -17,14 +17,14 @@ export async function POST(req: Request) {
 
   if (!customerId) {
     const customer = await stripe.customers.create({
-      email: session.user.email ?? undefined,
-      name: session.user.name ?? undefined,
-      metadata: { userId: session.user.id },
+      email: session.user?.email ?? undefined,
+      name: session.user?.name ?? undefined,
+      metadata: { userId: session.user?.id as string },
     });
     customerId = customer.id;
     await prisma.billing.upsert({
-      where: { userId: session.user.id },
-      create: { userId: session.user.id, stripeCustomerId: customerId },
+      where: { userId: session.user?.id as string },
+      create: { userId: session.user?.id as string, stripeCustomerId: customerId },
       update: { stripeCustomerId: customerId },
     });
   }
@@ -38,7 +38,7 @@ export async function POST(req: Request) {
       line_items: [{ price: process.env.STRIPE_PREMIUM_PRICE_ID!, quantity: 1 }],
       success_url: `${appUrl}/settings/billing?success=1`,
       cancel_url: `${appUrl}/settings/billing`,
-      metadata: { userId: session.user.id, type: "subscription" },
+      metadata: { userId: session.user?.id as string, type: "subscription" },
     });
     return NextResponse.redirect(checkoutSession.url!);
   }
@@ -50,7 +50,7 @@ export async function POST(req: Request) {
       line_items: [{ price: process.env.STRIPE_MATCH_PACK_PRICE_ID!, quantity: 1 }],
       success_url: `${appUrl}/settings/billing?success=1`,
       cancel_url: `${appUrl}/settings/billing`,
-      metadata: { userId: session.user.id, type: "match_pack" },
+      metadata: { userId: session.user?.id as string, type: "match_pack" },
     });
     return NextResponse.redirect(checkoutSession.url!);
   }

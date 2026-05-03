@@ -18,11 +18,11 @@ export async function POST(req: Request) {
   if (!parsed.success) return NextResponse.json({ error: "Invalid." }, { status: 400 });
 
   // Delete existing slots and re-create
-  await prisma.availabilitySlot.deleteMany({ where: { userId: session.user.id } });
+  await prisma.availabilitySlot.deleteMany({ where: { userId: session.user?.id as string } });
 
   await prisma.availabilitySlot.createMany({
     data: parsed.data.slots.map((s) => ({
-      userId: session.user.id,
+      userId: session.user?.id as string,
       dayOfWeek: s.dayOfWeek,
       timeBlock: s.timeBlock,
       isRecurring: s.isRecurring,
@@ -30,7 +30,7 @@ export async function POST(req: Request) {
     })),
   });
 
-  await prisma.user.update({ where: { id: session.user.id }, data: { onboardingStep: 5 } });
+  await prisma.user.update({ where: { id: session.user?.id as string }, data: { onboardingStep: 5 } });
 
   return NextResponse.json({ ok: true });
 }
@@ -38,7 +38,7 @@ export async function POST(req: Request) {
 export async function GET() {
   const session = await getRequiredSession();
   const slots = await prisma.availabilitySlot.findMany({
-    where: { userId: session.user.id, isActive: true },
+    where: { userId: session.user?.id as string, isActive: true },
   });
   return NextResponse.json(slots);
 }

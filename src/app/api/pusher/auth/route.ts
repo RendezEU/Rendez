@@ -10,7 +10,7 @@ export async function POST(req: Request) {
   const channelName = params.get("channel_name")!;
 
   // Only allow users to subscribe to their own channels
-  const userId = session.user.id;
+  const userId = session.user?.id as string;
   const allowed =
     channelName === `private-user-${userId}` ||
     channelName.startsWith("private-match-");

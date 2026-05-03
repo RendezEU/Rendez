@@ -23,8 +23,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ matchId
     include: { finalizedPlan: true },
   });
   if (!match) return NextResponse.json({ error: "Not found." }, { status: 404 });
-  const isA = match.userAId === session.user.id;
-  const isB = match.userBId === session.user.id;
+  const isA = match.userAId === session.user?.id as string;
+  const isB = match.userBId === session.user?.id as string;
   if (!isA && !isB) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
 
   const { actionType, payload, targetActionId } = parsed.data;
@@ -38,8 +38,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ matchId
         data: { [field]: new Date() },
       });
     }
-    await addReputationEvent(session.user.id, "ON_TIME", matchId);
-    await triggerMatchEvent(matchId, "user-arrived", { userId: session.user.id });
+    await addReputationEvent(session.user?.id as string, "ON_TIME", matchId);
+    await triggerMatchEvent(matchId, "user-arrived", { userId: session.user?.id as string });
     return NextResponse.json({ ok: true });
   }
 
@@ -103,7 +103,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ matchId
 
   // Propose actions
   const action = await prisma.systemAction.create({
-    data: { matchId, initiatorId: session.user.id, actionType, payload },
+    data: { matchId, initiatorId: session.user?.id as string, actionType, payload: payload as never },
   });
 
   await triggerMatchEvent(matchId, "system-action", action);

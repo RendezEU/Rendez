@@ -17,18 +17,18 @@ export async function POST(req: Request, { params }: { params: Promise<{ activit
 
   const post = await prisma.activityPost.findUnique({ where: { id: activityId } });
   if (!post || !post.isActive) return NextResponse.json({ error: "Post not found." }, { status: 404 });
-  if (post.userId === session.user.id) return NextResponse.json({ error: "Cannot request your own post." }, { status: 400 });
+  if (post.userId === session.user?.id as string) return NextResponse.json({ error: "Cannot request your own post." }, { status: 400 });
 
   // Weekly limit check
   const weekStart = new Date();
   weekStart.setDate(weekStart.getDate() - weekStart.getDay());
   weekStart.setHours(0, 0, 0, 0);
 
-  const billing = await prisma.billing.findUnique({ where: { userId: session.user.id } });
+  const billing = await prisma.billing.findUnique({ where: { userId: session.user?.id as string } });
   const limit = billing?.tier === "PREMIUM" ? PREMIUM_WEEKLY_LIMIT : FREE_WEEKLY_LIMIT;
 
   const count = await prisma.feedMatchRequest.count({
-    where: { requesterId: session.user.id, createdAt: { gte: weekStart } },
+    where: { requesterId: session.user?.id as string, createdAt: { gte: weekStart } },
   });
 
   if (count >= limit) {
@@ -37,14 +37,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ activit
 
   // Check not already requested
   const existing = await prisma.feedMatchRequest.findUnique({
-    where: { activityPostId_requesterId: { activityPostId: activityId, requesterId: session.user.id } },
+    where: { activityPostId_requesterId: { activityPostId: activityId, requesterId: session.user?.id as string } },
   });
   if (existing) return NextResponse.json({ error: "Already requested." }, { status: 409 });
 
   const request = await prisma.feedMatchRequest.create({
     data: {
       activityPostId: activityId,
-      requesterId: session.user.id,
+      requesterId: session.user?.id as string,
       message: parsed.data.message,
     },
   });

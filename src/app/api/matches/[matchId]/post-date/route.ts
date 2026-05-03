@@ -16,7 +16,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ matchId
 
   const match = await prisma.match.findUnique({ where: { id: matchId } });
   if (!match) return NextResponse.json({ error: "Not found." }, { status: 404 });
-  if (match.userAId !== session.user.id && match.userBId !== session.user.id) {
+  if (match.userAId !== session.user?.id as string && match.userBId !== session.user?.id as string) {
     return NextResponse.json({ error: "Forbidden." }, { status: 403 });
   }
   if (match.status !== "COMPLETED") {
@@ -24,11 +24,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ matchId
   }
 
   const { decision } = parsed.data;
-  const otherId = match.userAId === session.user.id ? match.userBId : match.userAId;
+  const otherId = match.userAId === session.user?.id as string ? match.userBId : match.userAId;
 
   await prisma.postDateDecision.upsert({
-    where: { matchId_userId: { matchId, userId: session.user.id } },
-    create: { matchId, userId: session.user.id, decision },
+    where: { matchId_userId: { matchId, userId: session.user?.id as string } },
+    create: { matchId, userId: session.user?.id as string, decision },
     update: { decision },
   });
 

@@ -13,7 +13,7 @@ const EVENT_LABELS: Record<string, string> = {
 
 export default async function ReputationPage() {
   const session = await auth();
-  const userId = session!.user.id;
+  const userId = session?.user?.id as string;
 
   const [rep, events] = await Promise.all([
     prisma.reputation.findUnique({ where: { userId } }),

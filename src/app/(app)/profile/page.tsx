@@ -5,7 +5,7 @@ import { ACTIVITY_EMOJIS, ACTIVITY_LABELS, PROFILE_PROMPTS, INTENT_LABELS } from
 
 export default async function ProfilePage() {
   const session = await auth();
-  const userId = session!.user.id;
+  const userId = session?.user?.id as string;
 
   const user = await prisma.user.findUnique({
     where: { id: userId },

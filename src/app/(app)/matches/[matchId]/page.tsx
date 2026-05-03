@@ -9,7 +9,7 @@ import CountdownTimer from "@/components/matches/CountdownTimer";
 
 export default async function MatchDetailPage({ params }: { params: Promise<{ matchId: string }> }) {
   const session = await auth();
-  const userId = session!.user.id;
+  const userId = session?.user?.id as string;
   const { matchId } = await params;
 
   const match = await prisma.match.findUnique({

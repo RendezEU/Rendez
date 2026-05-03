@@ -20,9 +20,9 @@ export async function POST(req: Request) {
   const { birthDate, gender, genderPreferences, city, maxDistanceKm } = parsed.data;
 
   await prisma.profile.upsert({
-    where: { userId: session.user.id },
+    where: { userId: session.user?.id as string },
     create: {
-      userId: session.user.id,
+      userId: session.user?.id as string,
       birthDate: new Date(birthDate),
       gender,
       genderPreferences,
@@ -35,7 +35,7 @@ export async function POST(req: Request) {
   });
 
   await prisma.user.update({
-    where: { id: session.user.id },
+    where: { id: session.user?.id as string },
     data: { onboardingStep: Math.max(1, 1) },
   });
 

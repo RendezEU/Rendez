@@ -6,7 +6,7 @@ import { ACTIVITY_EMOJIS, ACTIVITY_LABELS } from "@/types";
 
 export default async function DashboardPage() {
   const session = await auth();
-  const userId = session!.user.id;
+  const userId = session?.user?.id as string;
 
   const [user, confirmedMatches, pendingMatches, billing] = await Promise.all([
     prisma.user.findUnique({ where: { id: userId }, include: { profile: true } }),

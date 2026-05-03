@@ -4,7 +4,7 @@ import Link from "next/link";
 
 export default async function BillingPage() {
   const session = await auth();
-  const userId = session!.user.id;
+  const userId = session?.user?.id as string;
 
   const billing = await prisma.billing.findUnique({ where: { userId } });
   const isPremium = billing?.tier === "PREMIUM";

@@ -16,11 +16,11 @@ export async function POST(req: Request) {
   if (!parsed.success) return NextResponse.json({ error: "Invalid." }, { status: 400 });
 
   await prisma.profile.update({
-    where: { userId: session.user.id },
+    where: { userId: session.user?.id as string },
     data: { preferredActivities: parsed.data.preferredActivities },
   });
 
-  await prisma.user.update({ where: { id: session.user.id }, data: { onboardingStep: 4 } });
+  await prisma.user.update({ where: { id: session.user?.id as string }, data: { onboardingStep: 4 } });
 
   return NextResponse.json({ ok: true });
 }

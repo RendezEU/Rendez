@@ -7,7 +7,7 @@ import RequestMatchButton from "@/components/feed/RequestMatchButton";
 
 export default async function ActivityDetailPage({ params }: { params: Promise<{ activityId: string }> }) {
   const session = await auth();
-  const userId = session!.user.id;
+  const userId = session?.user?.id as string;
   const { activityId } = await params;
 
   const post = await prisma.activityPost.findUnique({

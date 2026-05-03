@@ -24,7 +24,7 @@ export async function POST(req: Request) {
 
   const post = await prisma.activityPost.create({
     data: {
-      userId: session.user.id,
+      userId: session.user?.id as string,
       activityCategory: parsed.data.activityCategory,
       title: parsed.data.title,
       description: parsed.data.description,

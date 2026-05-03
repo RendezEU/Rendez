@@ -7,7 +7,7 @@ import CreateActivityButton from "@/components/feed/CreateActivityButton";
 
 export default async function FeedPage() {
   const session = await auth();
-  const userId = session!.user.id;
+  const userId = session?.user?.id as string;
 
   const profile = await prisma.profile.findUnique({ where: { userId } });
   const city = profile?.city ?? "";
