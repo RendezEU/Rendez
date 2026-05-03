@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/generate-matches",
+      "schedule": "0 6 * * 1"
+    },
+    {
+      "path": "/api/cron/expire-matches",
+      "schedule": "*/30 * * * *"
+    }
+  ]
+}

@@ -1,0 +1,431 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── ENUMS ───────────────────────────────────────────────────────────────────
+
+enum Gender {
+  MALE
+  FEMALE
+  NON_BINARY
+  OTHER
+  PREFER_NOT_TO_SAY
+}
+
+enum IntentType {
+  CASUAL
+  SERIOUS
+  OPEN
+}
+
+enum ActivityCategory {
+  RUNNING
+  COFFEE_WALK
+  DRINKS
+  TENNIS
+  HIKING
+  CYCLING
+  YOGA
+  COOKING
+  MUSEUM
+  PICNIC
+  CLIMBING
+  DANCING
+}
+
+enum TimeBlock {
+  MORNING
+  AFTERNOON
+  EVENING
+  NIGHT
+}
+
+enum DayOfWeek {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
+enum MatchSource {
+  AI_SUGGESTED
+  FEED_REQUEST
+}
+
+enum MatchStatus {
+  PENDING_BOTH_DECISIONS
+  PENDING_OTHER_DECISION
+  REJECTED
+  ACCEPTED
+  COORDINATING
+  CONFIRMED
+  DATE_ACTIVE
+  COMPLETED
+  CANCELLED
+  EXPIRED
+}
+
+enum SystemActionType {
+  PROPOSE_TIME
+  ACCEPT_TIME
+  PROPOSE_LOCATION
+  ACCEPT_LOCATION
+  CONFIRM_PLAN
+  RUNNING_LATE
+  ARRIVED
+  CANCEL
+}
+
+enum PostDateChoice {
+  CONNECT
+  PASS
+}
+
+enum UserTier {
+  FREE
+  PREMIUM
+}
+
+// ─── USER & AUTH ─────────────────────────────────────────────────────────────
+
+model User {
+  id                 String    @id @default(cuid())
+  email              String    @unique
+  emailVerified      DateTime?
+  passwordHash       String?
+  name               String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  onboardingComplete Boolean   @default(false)
+  onboardingStep     Int       @default(0)
+
+  accounts          Account[]
+  sessions          Session[]
+  profile           Profile?
+  availabilitySlots AvailabilitySlot[]
+  matchesAsUserA    Match[]             @relation("MatchUserA")
+  matchesAsUserB    Match[]             @relation("MatchUserB")
+  activityPosts     ActivityPost[]
+  sentMessages      Message[]
+  postDateDecisions PostDateDecision[]
+  reputation        Reputation?
+  reputationEvents  ReputationEvent[]
+  billing           Billing?
+  pushTokens        PushToken[]
+
+  @@index([email])
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ─── PROFILE ─────────────────────────────────────────────────────────────────
+
+model Profile {
+  id                  String           @id @default(cuid())
+  userId              String           @unique
+  user                User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  birthDate           DateTime
+  gender              Gender
+  genderPreferences   Gender[]
+  city                String
+  latitude            Float?
+  longitude           Float?
+  maxDistanceKm       Int              @default(25)
+  intent              IntentType
+  personalityScore    Int
+  preferredActivities ActivityCategory[]
+  promptAnswers       PromptAnswer[]
+  photos              ProfilePhoto[]
+  updatedAt           DateTime         @updatedAt
+}
+
+model PromptAnswer {
+  id           String  @id @default(cuid())
+  profileId    String
+  profile      Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  promptKey    String
+  answer       String  @db.Text
+  displayOrder Int
+
+  @@unique([profileId, promptKey])
+}
+
+model ProfilePhoto {
+  id        String  @id @default(cuid())
+  profileId String
+  profile   Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  url       String
+  isPrimary Boolean @default(false)
+  order     Int
+}
+
+// ─── AVAILABILITY ─────────────────────────────────────────────────────────────
+
+model AvailabilitySlot {
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dayOfWeek    DayOfWeek
+  timeBlock    TimeBlock
+  isRecurring  Boolean   @default(false)
+  specificDate DateTime?
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+
+  @@unique([userId, dayOfWeek, timeBlock])
+  @@index([userId, isActive])
+}
+
+// ─── MATCHING ─────────────────────────────────────────────────────────────────
+
+model Match {
+  id               String           @id @default(cuid())
+  userAId          String
+  userA            User             @relation("MatchUserA", fields: [userAId], references: [id])
+  userBId          String
+  userB            User             @relation("MatchUserB", fields: [userBId], references: [id])
+  source           MatchSource
+  status           MatchStatus      @default(PENDING_BOTH_DECISIONS)
+  activityCategory ActivityCategory
+  compatibilityScore Float?
+  aiReasoning      String?          @db.Text
+  aiSummaryA       String?          @db.Text
+  aiSummaryB       String?          @db.Text
+  weekBatchId      String?
+  userADecision    Boolean?
+  userBDecision    Boolean?
+  userADecidedAt   DateTime?
+  userBDecidedAt   DateTime?
+  messages         Message[]
+  systemActions    SystemAction[]
+  finalizedPlan    FinalizedPlan?
+  postDateDecisions PostDateDecision[]
+  reputationEvents ReputationEvent[]
+  creditConsumptions MatchCreditConsumption[]
+  expiresAt        DateTime
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  @@index([userAId, status])
+  @@index([userBId, status])
+  @@index([weekBatchId])
+}
+
+model Message {
+  id           String   @id @default(cuid())
+  matchId      String
+  match        Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  senderId     String
+  sender       User     @relation(fields: [senderId], references: [id])
+  content      String   @db.Text
+  messageIndex Int
+  readAt       DateTime?
+  createdAt    DateTime @default(now())
+
+  @@index([matchId])
+  @@index([senderId])
+}
+
+model SystemAction {
+  id          String           @id @default(cuid())
+  matchId     String
+  match       Match            @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  initiatorId String
+  actionType  SystemActionType
+  payload     Json
+  acceptedAt  DateTime?
+  rejectedAt  DateTime?
+  createdAt   DateTime         @default(now())
+
+  @@index([matchId])
+}
+
+model FinalizedPlan {
+  id               String           @id @default(cuid())
+  matchId          String           @unique
+  match            Match            @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  activityCategory ActivityCategory
+  locationName     String
+  locationUrl      String?
+  scheduledAt      DateTime
+  notes            String?          @db.Text
+  userAArrivedAt   DateTime?
+  userBArrivedAt   DateTime?
+  confirmedAt      DateTime         @default(now())
+}
+
+// ─── ACTIVITY FEED ────────────────────────────────────────────────────────────
+
+model ActivityPost {
+  id               String           @id @default(cuid())
+  userId           String
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  activityCategory ActivityCategory
+  title            String
+  description      String?          @db.Text
+  scheduledAt      DateTime
+  locationName     String?
+  locationLat      Float?
+  locationLng      Float?
+  city             String
+  isActive         Boolean          @default(true)
+  matchRequests    FeedMatchRequest[]
+  createdAt        DateTime         @default(now())
+  expiresAt        DateTime
+
+  @@index([city, activityCategory, isActive])
+  @@index([userId])
+}
+
+model FeedMatchRequest {
+  id             String       @id @default(cuid())
+  activityPostId String
+  activityPost   ActivityPost @relation(fields: [activityPostId], references: [id], onDelete: Cascade)
+  requesterId    String
+  matchId        String?
+  status         String       @default("PENDING")
+  message        String?      @db.Text
+  createdAt      DateTime     @default(now())
+
+  @@unique([activityPostId, requesterId])
+  @@index([requesterId])
+}
+
+// ─── POST-DATE ────────────────────────────────────────────────────────────────
+
+model PostDateDecision {
+  id        String         @id @default(cuid())
+  matchId   String
+  match     Match          @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User           @relation(fields: [userId], references: [id])
+  decision  PostDateChoice
+  createdAt DateTime       @default(now())
+
+  @@unique([matchId, userId])
+  @@index([matchId])
+}
+
+// ─── REPUTATION ───────────────────────────────────────────────────────────────
+
+model Reputation {
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  showUpScore      Float    @default(1.0)
+  punctualityScore Float    @default(1.0)
+  experienceScore  Float    @default(1.0)
+  reliabilityScore Float    @default(1.0)
+  totalDates       Int      @default(0)
+  totalNoShows     Int      @default(0)
+  totalLateArrivals Int     @default(0)
+  updatedAt        DateTime @updatedAt
+}
+
+model ReputationEvent {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  matchId   String?
+  match     Match?   @relation(fields: [matchId], references: [id])
+  eventType String
+  delta     Float
+  notes     String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// ─── BILLING ─────────────────────────────────────────────────────────────────
+
+model Billing {
+  id                   String                  @id @default(cuid())
+  userId               String                  @unique
+  user                 User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tier                 UserTier                @default(FREE)
+  stripeCustomerId     String?                 @unique
+  stripeSubscriptionId String?                 @unique
+  subscriptionStatus   String?
+  freeCreditsRemaining Int                     @default(3)
+  purchasedCredits     Int                     @default(0)
+  subscriptionEndsAt   DateTime?
+  createdAt            DateTime                @default(now())
+  updatedAt            DateTime                @updatedAt
+  creditConsumptions   MatchCreditConsumption[]
+  billingEvents        BillingEvent[]
+}
+
+model MatchCreditConsumption {
+  id         String   @id @default(cuid())
+  billingId  String
+  billing    Billing  @relation(fields: [billingId], references: [id])
+  matchId    String
+  match      Match    @relation(fields: [matchId], references: [id])
+  creditType String
+  createdAt  DateTime @default(now())
+}
+
+model BillingEvent {
+  id            String   @id @default(cuid())
+  billingId     String
+  billing       Billing  @relation(fields: [billingId], references: [id])
+  eventType     String
+  stripeEventId String?  @unique
+  amount        Int?
+  currency      String?  @default("eur")
+  metadata      Json?
+  createdAt     DateTime @default(now())
+}
+
+// ─── NOTIFICATIONS ────────────────────────────────────────────────────────────
+
+model PushToken {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  platform  String
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
