@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getRequiredSession } from "@/lib/auth/session";
+import { getRequestUserId } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/client";
 import { triggerUserEvent } from "@/lib/pusher/server";
 import { z } from "zod";
@@ -7,7 +7,7 @@ import { z } from "zod";
 const schema = z.object({ accept: z.boolean() });
 
 export async function POST(req: Request, { params }: { params: Promise<{ matchId: string }> }) {
-  const session = await getRequiredSession();
+  const userId = await getRequestUserId(req);
   const { matchId } = await params;
   const body = await req.json();
   const parsed = schema.safeParse(body);
@@ -16,8 +16,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ matchId
   const match = await prisma.match.findUnique({ where: { id: matchId } });
   if (!match) return NextResponse.json({ error: "Not found." }, { status: 404 });
 
-  const isA = match.userAId === session.user?.id as string;
-  const isB = match.userBId === session.user?.id as string;
+  const isA = match.userAId === userId;
+  const isB = match.userBId === userId;
   if (!isA && !isB) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
 
   const { accept } = parsed.data;
@@ -32,19 +32,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ matchId
   const bDecided = updated.userBDecision !== null;
 
   if (!accept) {
-    // One rejection → rejected
     await prisma.match.update({ where: { id: matchId }, data: { status: "REJECTED" } });
-
-    // Return credit if it was reserved
-    await prisma.billing.updateMany({
-      where: { userId: session.user?.id as string },
-      data: { freeCreditsRemaining: { increment: 0 } }, // credits are consumed only on mutual accept
-    });
   } else if (aDecided && bDecided && updated.userADecision && updated.userBDecision) {
-    // Both accepted → coordinating
     await prisma.match.update({ where: { id: matchId }, data: { status: "COORDINATING" } });
 
-    // Consume one credit from each user
     await prisma.billing.updateMany({
       where: { userId: match.userAId, freeCreditsRemaining: { gt: 0 } },
       data: { freeCreditsRemaining: { decrement: 1 } },
@@ -56,9 +47,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ matchId
 
     const otherId = isA ? match.userBId : match.userAId;
     await triggerUserEvent(otherId, "match-accepted", { matchId });
-    await triggerUserEvent(session.user?.id as string, "match-accepted", { matchId });
+    await triggerUserEvent(userId, "match-accepted", { matchId });
   } else {
-    // One accepted, waiting for other
     await prisma.match.update({ where: { id: matchId }, data: { status: "PENDING_OTHER_DECISION" } });
   }
 

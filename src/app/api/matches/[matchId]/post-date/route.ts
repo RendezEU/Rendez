@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getRequiredSession } from "@/lib/auth/session";
+import { getRequestUserId } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/client";
 import { triggerUserEvent } from "@/lib/pusher/server";
 import { addReputationEvent } from "@/lib/reputation/calculator";
@@ -8,7 +8,7 @@ import { z } from "zod";
 const schema = z.object({ decision: z.enum(["CONNECT", "PASS"]) });
 
 export async function POST(req: Request, { params }: { params: Promise<{ matchId: string }> }) {
-  const session = await getRequiredSession();
+  const userId = await getRequestUserId(req);
   const { matchId } = await params;
   const body = await req.json();
   const parsed = schema.safeParse(body);
@@ -16,7 +16,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ matchId
 
   const match = await prisma.match.findUnique({ where: { id: matchId } });
   if (!match) return NextResponse.json({ error: "Not found." }, { status: 404 });
-  if (match.userAId !== session.user?.id as string && match.userBId !== session.user?.id as string) {
+  if (match.userAId !== userId && match.userBId !== userId) {
     return NextResponse.json({ error: "Forbidden." }, { status: 403 });
   }
   if (match.status !== "COMPLETED") {
@@ -24,11 +24,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ matchId
   }
 
   const { decision } = parsed.data;
-  const otherId = match.userAId === session.user?.id as string ? match.userBId : match.userAId;
+  const otherId = match.userAId === userId ? match.userBId : match.userAId;
 
   await prisma.postDateDecision.upsert({
-    where: { matchId_userId: { matchId, userId: session.user?.id as string } },
-    create: { matchId, userId: session.user?.id as string, decision },
+    where: { matchId_userId: { matchId, userId } },
+    create: { matchId, userId, decision },
     update: { decision },
   });
 

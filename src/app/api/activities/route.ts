@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getRequiredSession } from "@/lib/auth/session";
+import { getRequestUserId } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/client";
 import { z } from "zod";
 
@@ -15,7 +15,7 @@ const schema = z.object({
 });
 
 export async function POST(req: Request) {
-  const session = await getRequiredSession();
+  const userId = await getRequestUserId(req);
   const body = await req.json();
   const parsed = schema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: "Invalid." }, { status: 400 });
@@ -24,7 +24,7 @@ export async function POST(req: Request) {
 
   const post = await prisma.activityPost.create({
     data: {
-      userId: session.user?.id as string,
+      userId: userId,
       activityCategory: parsed.data.activityCategory,
       title: parsed.data.title,
       description: parsed.data.description,

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getRequiredSession } from "@/lib/auth/session";
+import { getRequestUserId } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/client";
 import { triggerMatchEvent } from "@/lib/pusher/server";
 import { addReputationEvent } from "@/lib/reputation/calculator";
@@ -12,7 +12,7 @@ const schema = z.object({
 });
 
 export async function POST(req: Request, { params }: { params: Promise<{ matchId: string }> }) {
-  const session = await getRequiredSession();
+  const userId = await getRequestUserId(req);
   const { matchId } = await params;
   const body = await req.json();
   const parsed = schema.safeParse(body);
@@ -23,8 +23,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ matchId
     include: { finalizedPlan: true },
   });
   if (!match) return NextResponse.json({ error: "Not found." }, { status: 404 });
-  const isA = match.userAId === session.user?.id as string;
-  const isB = match.userBId === session.user?.id as string;
+  const isA = match.userAId === userId;
+  const isB = match.userBId === userId;
   if (!isA && !isB) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
 
   const { actionType, payload, targetActionId } = parsed.data;
@@ -38,8 +38,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ matchId
         data: { [field]: new Date() },
       });
     }
-    await addReputationEvent(session.user?.id as string, "ON_TIME", matchId);
-    await triggerMatchEvent(matchId, "user-arrived", { userId: session.user?.id as string });
+    await addReputationEvent(userId, "ON_TIME", matchId);
+    await triggerMatchEvent(matchId, "user-arrived", { userId: userId });
     return NextResponse.json({ ok: true });
   }
 
@@ -103,7 +103,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ matchId
 
   // Propose actions
   const action = await prisma.systemAction.create({
-    data: { matchId, initiatorId: session.user?.id as string, actionType, payload: payload as never },
+    data: { matchId, initiatorId: userId, actionType, payload: payload as never },
   });
 
   await triggerMatchEvent(matchId, "system-action", action);

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getRequiredSession } from "@/lib/auth/session";
+import { getRequestUserId } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/client";
 import { z } from "zod";
 
@@ -12,17 +12,17 @@ const slotSchema = z.object({
 const schema = z.object({ slots: z.array(slotSchema).min(1) });
 
 export async function POST(req: Request) {
-  const session = await getRequiredSession();
+  const userId = await getRequestUserId(req);
   const body = await req.json();
   const parsed = schema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: "Invalid." }, { status: 400 });
 
   // Delete existing slots and re-create
-  await prisma.availabilitySlot.deleteMany({ where: { userId: session.user?.id as string } });
+  await prisma.availabilitySlot.deleteMany({ where: { userId: userId } });
 
   await prisma.availabilitySlot.createMany({
     data: parsed.data.slots.map((s) => ({
-      userId: session.user?.id as string,
+      userId: userId,
       dayOfWeek: s.dayOfWeek,
       timeBlock: s.timeBlock,
       isRecurring: s.isRecurring,
@@ -30,15 +30,15 @@ export async function POST(req: Request) {
     })),
   });
 
-  await prisma.user.update({ where: { id: session.user?.id as string }, data: { onboardingStep: 5 } });
+  await prisma.user.update({ where: { id: userId }, data: { onboardingStep: 5 } });
 
   return NextResponse.json({ ok: true });
 }
 
-export async function GET() {
-  const session = await getRequiredSession();
+export async function GET(req: Request) {
+  const userId = await getRequestUserId(req);
   const slots = await prisma.availabilitySlot.findMany({
-    where: { userId: session.user?.id as string, isActive: true },
+    where: { userId: userId, isActive: true },
   });
   return NextResponse.json(slots);
 }
