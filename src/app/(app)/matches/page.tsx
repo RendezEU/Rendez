@@ -97,7 +97,7 @@ export default async function MatchesPage() {
                   {promptAnswer && promptQuestion && (
                     <div className="mt-3 bg-stone-50 rounded-xl p-3">
                       <div className="text-xs text-stone-400 mb-1">{promptQuestion}</div>
-                      <div className="text-sm text-stone-700 font-medium">"{promptAnswer.answer}"</div>
+                      <div className="text-sm text-stone-700 font-medium">&ldquo;{promptAnswer.answer}&rdquo;</div>
                     </div>
                   )}
                 </div>

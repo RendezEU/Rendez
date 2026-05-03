@@ -67,7 +67,7 @@ export default async function ActivityDetailPage({ params }: { params: Promise<{
         {promptAnswer && promptQuestion && (
           <div className="bg-stone-50 rounded-xl p-4">
             <div className="text-xs text-stone-400 mb-1">{promptQuestion}</div>
-            <div className="text-sm text-stone-800 font-medium">"{promptAnswer.answer}"</div>
+            <div className="text-sm text-stone-800 font-medium">&ldquo;{promptAnswer.answer}&rdquo;</div>
           </div>
         )}
       </div>

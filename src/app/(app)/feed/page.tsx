@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/client";
 import Link from "next/link";
-import { ACTIVITY_EMOJIS, ACTIVITY_LABELS } from "@/types";
+import { ACTIVITY_EMOJIS } from "@/types";
 import { formatDate } from "@/lib/utils/date";
 import CreateActivityButton from "@/components/feed/CreateActivityButton";
 

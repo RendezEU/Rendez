@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getRequiredSession } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/client";
-import { triggerMatchEvent, triggerUserEvent } from "@/lib/pusher/server";
+import { triggerMatchEvent } from "@/lib/pusher/server";
 import { addReputationEvent } from "@/lib/reputation/calculator";
 import { z } from "zod";
 

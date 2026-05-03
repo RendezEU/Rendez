@@ -2,7 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { prisma } from "@/lib/db/client";
 import { findOverlap, haversineDistance } from "@/lib/matching/availability-overlap";
 import type { ActivityCategory, Gender, IntentType } from "@prisma/client";
-import { addDays, startOfWeek } from "date-fns";
+import { startOfWeek } from "date-fns";
 
 const client = new Anthropic();
 
@@ -143,7 +143,6 @@ Respond ONLY with this exact JSON:
 export async function generateWeeklyMatches(batchId?: string) {
   const weekBatchId = batchId ?? `batch-${Date.now()}`;
   const weekStart = startOfWeek(new Date(), { weekStartsOn: 1 });
-  const weekEnd = addDays(weekStart, 7);
 
   // Load all eligible users with profiles, availability, and billing
   const users = await prisma.user.findMany({

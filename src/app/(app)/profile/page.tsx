@@ -95,7 +95,7 @@ export default async function ProfilePage() {
             return (
               <div key={answer.id} className="bg-white border border-stone-200 rounded-xl p-4">
                 <div className="text-xs text-stone-400 mb-1">{prompt?.question}</div>
-                <div className="text-sm text-stone-800 font-medium">"{answer.answer}"</div>
+                <div className="text-sm text-stone-800 font-medium">&ldquo;{answer.answer}&rdquo;</div>
               </div>
             );
           })}

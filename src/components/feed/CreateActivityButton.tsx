@@ -6,7 +6,7 @@ import { ACTIVITY_LABELS, ACTIVITY_EMOJIS } from "@/types";
 
 const ACTIVITIES = Object.keys(ACTIVITY_LABELS);
 
-export default function CreateActivityButton({ userId, city }: { userId: string; city: string }) {
+export default function CreateActivityButton({ city }: { userId: string; city: string }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
