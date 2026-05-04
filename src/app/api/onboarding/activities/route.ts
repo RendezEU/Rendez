@@ -7,6 +7,7 @@ const VALID_ACTIVITIES = ["RUNNING","COFFEE_WALK","DRINKS","TENNIS","HIKING","CY
 
 const schema = z.object({
   preferredActivities: z.array(z.enum(VALID_ACTIVITIES)).min(2),
+  customActivities: z.string().max(300).optional(),
 });
 
 export async function POST(req: Request) {
@@ -17,7 +18,10 @@ export async function POST(req: Request) {
 
   await prisma.profile.update({
     where: { userId: userId },
-    data: { preferredActivities: parsed.data.preferredActivities },
+    data: {
+      preferredActivities: parsed.data.preferredActivities,
+      ...(parsed.data.customActivities !== undefined && { customActivities: parsed.data.customActivities }),
+    },
   });
 
   await prisma.user.update({ where: { id: userId }, data: { onboardingStep: 4 } });
