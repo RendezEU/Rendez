@@ -6,7 +6,7 @@ import { addReputationEvent } from "@/lib/reputation/calculator";
 import { z } from "zod";
 
 const schema = z.object({
-  actionType: z.enum(["PROPOSE_TIME","ACCEPT_TIME","PROPOSE_LOCATION","ACCEPT_LOCATION","CONFIRM_PLAN","RUNNING_LATE","ARRIVED","CANCEL"]),
+  actionType: z.enum(["PROPOSE_TIME","ACCEPT_TIME","PROPOSE_LOCATION","ACCEPT_LOCATION","CONFIRM_PLAN","RUNNING_LATE","ARRIVED","CANCEL","RETRACT_PROPOSAL"]),
   payload: z.record(z.unknown()).default({}),
   targetActionId: z.string().optional(), // for ACCEPT_TIME / ACCEPT_LOCATION
 });
@@ -87,6 +87,17 @@ export async function POST(req: Request, { params }: { params: Promise<{ matchId
   // Handle CANCEL
   if (actionType === "CANCEL") {
     await prisma.match.update({ where: { id: matchId }, data: { status: "CANCELLED" } });
+    return NextResponse.json({ ok: true });
+  }
+
+  // Retract proposal — deletes all the caller's pending proposals of the given type
+  if (actionType === "RETRACT_PROPOSAL") {
+    const retractType = (payload as { proposalType?: string }).proposalType;
+    if (!retractType) return NextResponse.json({ error: "proposalType required." }, { status: 400 });
+    await prisma.systemAction.deleteMany({
+      where: { matchId, initiatorId: userId, actionType: retractType, acceptedAt: null },
+    });
+    await triggerMatchEvent(matchId, "system-action", { retracted: retractType });
     return NextResponse.json({ ok: true });
   }
 
