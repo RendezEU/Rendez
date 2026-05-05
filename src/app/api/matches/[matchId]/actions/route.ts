@@ -95,7 +95,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ matchId
     const retractType = (payload as { proposalType?: string }).proposalType;
     if (!retractType) return NextResponse.json({ error: "proposalType required." }, { status: 400 });
     await prisma.systemAction.deleteMany({
-      where: { matchId, initiatorId: userId, actionType: retractType, acceptedAt: null },
+      where: { matchId, initiatorId: userId, actionType: retractType as never, acceptedAt: null },
     });
     await triggerMatchEvent(matchId, "system-action", { retracted: retractType });
     return NextResponse.json({ ok: true });
