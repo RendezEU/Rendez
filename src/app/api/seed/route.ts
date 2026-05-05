@@ -106,10 +106,21 @@ export async function POST(req: Request) {
   const passwordHash = await bcrypt.hash("password123", 10);
   const now = new Date();
 
+  // Load the real user's gender and preferences so we only seed compatible matches
+  const realProfile = await prisma.profile.findUnique({ where: { userId } });
+  const realGender = realProfile?.gender ?? null;
+  const realPrefs = realProfile?.genderPreferences ?? [];
+
   let created = 0;
   const matchIds: string[] = [];
 
   for (const fake of FAKE_USERS) {
+    // Enforce mutual gender compatibility before seeding a match
+    if (realGender && realPrefs.length > 0) {
+      const theyWantMe = fake.genderPrefs.includes(realGender as string);
+      const iWantThem = realPrefs.includes(fake.gender as never);
+      if (!theyWantMe || !iWantThem) continue;
+    }
     // Skip if already exists
     const existing = await prisma.user.findUnique({ where: { email: fake.email } });
     if (existing) {
