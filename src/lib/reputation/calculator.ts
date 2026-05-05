@@ -72,6 +72,36 @@ export async function recalculateReputation(userId: string) {
   return reliability;
 }
 
+export async function applyStarRatings(
+  userId: string,
+  showUp: number,
+  kindness: number,
+  profileMatch: number
+) {
+  const existing = await prisma.reputation.findUnique({ where: { userId } });
+  const n = existing?.totalRatings ?? 0;
+
+  // Bayesian rolling average: new_avg = (old_avg * n + new_value) / (n + 1)
+  const avg = (prev: number, next: number) => (prev * n + next) / (n + 1);
+
+  await prisma.reputation.upsert({
+    where: { userId },
+    create: {
+      userId,
+      ratingShowUp: showUp,
+      ratingKindness: kindness,
+      ratingProfileMatch: profileMatch,
+      totalRatings: 1,
+    },
+    update: {
+      ratingShowUp: avg(existing?.ratingShowUp ?? 5, showUp),
+      ratingKindness: avg(existing?.ratingKindness ?? 5, kindness),
+      ratingProfileMatch: avg(existing?.ratingProfileMatch ?? 5, profileMatch),
+      totalRatings: n + 1,
+    },
+  });
+}
+
 export async function addReputationEvent(
   userId: string,
   eventType: string,

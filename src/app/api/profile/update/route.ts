@@ -3,12 +3,15 @@ import { getRequestUserId } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/client";
 import { z } from "zod";
 
+const GENDER_VALUES = ["MALE", "FEMALE", "NON_BINARY", "OTHER", "PREFER_NOT_TO_SAY"] as const;
+
 const schema = z.object({
   bio: z.string().max(500).optional(),
   city: z.string().min(1).max(100).optional(),
   intent: z.enum(["CASUAL", "SERIOUS", "OPEN"]).optional(),
   personalityScore: z.number().int().min(1).max(10).optional(),
   customActivities: z.string().max(300).optional(),
+  genderPreferences: z.array(z.enum(GENDER_VALUES)).optional(),
 });
 
 export async function POST(req: Request) {

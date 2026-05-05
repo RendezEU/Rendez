@@ -113,8 +113,9 @@ model User {
   availabilitySlots AvailabilitySlot[]
   matchesAsUserA    Match[]             @relation("MatchUserA")
   matchesAsUserB    Match[]             @relation("MatchUserB")
-  activityPosts     ActivityPost[]
-  sentMessages      Message[]
+  activityPosts       ActivityPost[]
+  feedMatchRequests   FeedMatchRequest[]  @relation("FeedMatchRequests")
+  sentMessages        Message[]
   postDateDecisions PostDateDecision[]
   reputation        Reputation?
   reputationEvents  ReputationEvent[]
@@ -324,6 +325,7 @@ model FeedMatchRequest {
   activityPostId String
   activityPost   ActivityPost @relation(fields: [activityPostId], references: [id], onDelete: Cascade)
   requesterId    String
+  requester      User         @relation("FeedMatchRequests", fields: [requesterId], references: [id])
   matchId        String?
   status         String       @default("PENDING")
   message        String?      @db.Text
@@ -351,17 +353,22 @@ model PostDateDecision {
 // ─── REPUTATION ───────────────────────────────────────────────────────────────
 
 model Reputation {
-  id               String   @id @default(cuid())
-  userId           String   @unique
-  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  showUpScore      Float    @default(1.0)
-  punctualityScore Float    @default(1.0)
-  experienceScore  Float    @default(1.0)
-  reliabilityScore Float    @default(1.0)
-  totalDates       Int      @default(0)
-  totalNoShows     Int      @default(0)
-  totalLateArrivals Int     @default(0)
-  updatedAt        DateTime @updatedAt
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  showUpScore       Float    @default(1.0)
+  punctualityScore  Float    @default(1.0)
+  experienceScore   Float    @default(1.0)
+  reliabilityScore  Float    @default(1.0)
+  // Direct star ratings from post-date reviews (1.0–5.0 scale)
+  ratingShowUp      Float    @default(5.0)
+  ratingKindness    Float    @default(5.0)
+  ratingProfileMatch Float   @default(5.0)
+  totalRatings      Int      @default(0)
+  totalDates        Int      @default(0)
+  totalNoShows      Int      @default(0)
+  totalLateArrivals Int      @default(0)
+  updatedAt         DateTime @updatedAt
 }
 
 model ReputationEvent {

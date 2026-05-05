@@ -2,10 +2,15 @@ import { NextResponse } from "next/server";
 import { getRequestUserId } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/client";
 import { triggerUserEvent } from "@/lib/pusher/server";
-import { addReputationEvent } from "@/lib/reputation/calculator";
+import { addReputationEvent, applyStarRatings } from "@/lib/reputation/calculator";
 import { z } from "zod";
 
-const schema = z.object({ decision: z.enum(["CONNECT", "PASS"]) });
+const schema = z.object({
+  decision: z.enum(["CONNECT", "PASS"]),
+  showUp: z.number().min(1).max(5).optional(),
+  kindness: z.number().min(1).max(5).optional(),
+  profileMatch: z.number().min(1).max(5).optional(),
+});
 
 export async function POST(req: Request, { params }: { params: Promise<{ matchId: string }> }) {
   const userId = await getRequestUserId(req);
@@ -23,7 +28,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ matchId
     return NextResponse.json({ error: "Date not completed yet." }, { status: 400 });
   }
 
-  const { decision } = parsed.data;
+  const { decision, showUp, kindness, profileMatch } = parsed.data;
   const otherId = match.userAId === userId ? match.userBId : match.userAId;
 
   await prisma.postDateDecision.upsert({
@@ -31,6 +36,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ matchId
     create: { matchId, userId, decision },
     update: { decision },
   });
+
+  // Apply star ratings to the other person's reputation
+  if (showUp !== undefined && kindness !== undefined && profileMatch !== undefined) {
+    await applyStarRatings(otherId, showUp, kindness, profileMatch);
+  }
 
   // Add reputation event for the other person
   if (decision === "CONNECT") {

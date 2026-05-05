@@ -16,9 +16,25 @@ export async function GET(req: Request) {
       finalizedPlan: true,
       messages: { orderBy: { createdAt: "asc" } },
       systemActions: { orderBy: { createdAt: "asc" } },
+      _count: {
+        select: {
+          messages: true,
+        },
+      },
     },
     orderBy: { createdAt: "desc" },
   });
 
-  return NextResponse.json(matches);
+  // Compute unread count per match for this user
+  const unreadCounts = await Promise.all(
+    matches.map((m) =>
+      prisma.message.count({
+        where: { matchId: m.id, senderId: { not: userId }, readAt: null },
+      })
+    )
+  );
+
+  return NextResponse.json(
+    matches.map((m, i) => ({ ...m, unreadCount: unreadCounts[i] }))
+  );
 }

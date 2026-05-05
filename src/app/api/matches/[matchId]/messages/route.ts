@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getRequestUserId } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/client";
 import { triggerMatchEvent } from "@/lib/pusher/server";
+import { sendPushToUser } from "@/lib/push/sendPush";
 import { z } from "zod";
 
 const MAX_MESSAGES = 5;
@@ -59,6 +60,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ matchId
   });
 
   await triggerMatchEvent(matchId, "new-message", message);
+
+  // Push notification to the other user
+  const recipientId = match.userAId === userId ? match.userBId : match.userAId;
+  const senderName = message.sender.name;
+  await sendPushToUser(
+    recipientId,
+    `New message from ${senderName} 💬`,
+    parsed.data.content.length > 80 ? parsed.data.content.slice(0, 80) + "…" : parsed.data.content,
+    { matchId, screen: "matches" }
+  );
 
   return NextResponse.json(message, { status: 201 });
 }

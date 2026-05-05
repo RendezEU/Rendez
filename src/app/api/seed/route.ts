@@ -130,7 +130,7 @@ export async function POST(req: Request) {
             activityCategory: fake.activityCategory as never,
             status: "PENDING_BOTH_DECISIONS" as never,
             compatibilityScore: fake.aiScore,
-            source: "AI" as never,
+            source: "AI_SUGGESTED" as never,
             expiresAt: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000),
           },
         });
