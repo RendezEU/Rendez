@@ -18,7 +18,6 @@ export async function GET(
         include: {
           photos: true,
           promptAnswers: true,
-          availabilitySlots: true,
         },
       },
     },
