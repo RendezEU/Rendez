@@ -5,7 +5,8 @@ import { triggerMatchEvent } from "@/lib/pusher/server";
 import { sendPushToUser } from "@/lib/push/sendPush";
 import { z } from "zod";
 
-const MAX_MESSAGES = 5;
+const BASE_LIMIT = 6;
+const EXTRA_LIMIT = 6; // purchased add-on
 
 const schema = z.object({ content: z.string().min(1).max(500) });
 
@@ -40,21 +41,26 @@ export async function POST(req: Request, { params }: { params: Promise<{ matchId
   if (match.userAId !== userId && match.userBId !== userId) {
     return NextResponse.json({ error: "Forbidden." }, { status: 403 });
   }
-  if (!["COORDINATING", "CONFIRMED", "DATE_ACTIVE"].includes(match.status)) {
+  if (!["COORDINATING", "CONFIRMED", "DATE_ACTIVE", "CONNECTED"].includes(match.status)) {
     return NextResponse.json({ error: "Match not in coordination phase." }, { status: 403 });
   }
 
-  const count = await prisma.message.count({ where: { matchId } });
-  if (count >= MAX_MESSAGES) {
-    return NextResponse.json({ error: "MESSAGE_LIMIT_REACHED", limit: MAX_MESSAGES }, { status: 403 });
+  const isA = match.userAId === userId;
+  const extraGranted = isA ? match.extraMsgGrantedA : match.extraMsgGrantedB;
+  const maxMessages = BASE_LIMIT + (extraGranted ? EXTRA_LIMIT : 0);
+
+  const myCount = await prisma.message.count({ where: { matchId, senderId: userId } });
+  if (myCount >= maxMessages) {
+    return NextResponse.json({ error: "MESSAGE_LIMIT_REACHED", limit: maxMessages }, { status: 403 });
   }
 
+  const totalCount = await prisma.message.count({ where: { matchId } });
   const message = await prisma.message.create({
     data: {
       matchId,
       senderId: userId,
       content: parsed.data.content,
-      messageIndex: count + 1,
+      messageIndex: totalCount + 1,
     },
     include: { sender: { select: { id: true, name: true } } },
   });

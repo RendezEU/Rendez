@@ -16,7 +16,7 @@ export async function GET(req: Request) {
           profile: {
             select: {
               gender: true, birthDate: true, city: true,
-              preferredActivities: true, bio: true,
+              preferredActivities: true, bio: true, intents: true, photoVerified: true,
               promptAnswers: { orderBy: { displayOrder: "asc" }, take: 2 },
               photos: { where: { isPrimary: true }, take: 1 },
             },
@@ -36,10 +36,11 @@ export async function GET(req: Request) {
       city: p.city,
       scheduledAt: p.scheduledAt,
       locationName: p.locationName,
-      maxParticipants: 1,
+      isSpontaneous: p.isSpontaneous,
+      maxParticipants: p.maxParticipants,
       createdAt: p.createdAt,
       creator: p.user,
-      _count: p._count,
+      requestCount: p._count.matchRequests,
     }))
   );
 }
@@ -49,19 +50,34 @@ const VALID_ACTIVITIES = ["RUNNING","COFFEE_WALK","DRINKS","TENNIS","HIKING","CY
 const schema = z.object({
   activityCategory: z.enum(VALID_ACTIVITIES),
   title: z.string().min(1).max(100),
-  description: z.string().max(500).optional(),
-  scheduledAt: z.string(),
+  description: z.string().max(600).optional(),
+  scheduledAt: z.string().optional(),
   locationName: z.string().optional(),
   city: z.string().min(1),
+  isSpontaneous: z.boolean().optional(),
+  maxParticipants: z.number().int().min(1).max(6).optional(),
 });
 
 export async function POST(req: Request) {
   const userId = await getRequestUserId(req);
   const body = await req.json();
   const parsed = schema.safeParse(body);
-  if (!parsed.success) return NextResponse.json({ error: "Invalid." }, { status: 400 });
+  if (!parsed.success) return NextResponse.json({ error: "Invalid.", details: parsed.error.flatten() }, { status: 400 });
 
-  const scheduled = new Date(parsed.data.scheduledAt);
+  const isSpontaneous = parsed.data.isSpontaneous ?? false;
+  const now = new Date();
+
+  let scheduled: Date;
+  let expiresAt: Date;
+  if (isSpontaneous) {
+    // Spontaneous: "free now" — starts now, expires in 3 hours
+    scheduled = now;
+    expiresAt = new Date(now.getTime() + 3 * 60 * 60 * 1000);
+  } else {
+    if (!parsed.data.scheduledAt) return NextResponse.json({ error: "scheduledAt required." }, { status: 400 });
+    scheduled = new Date(parsed.data.scheduledAt);
+    expiresAt = scheduled;
+  }
 
   const post = await prisma.activityPost.create({
     data: {
@@ -72,7 +88,9 @@ export async function POST(req: Request) {
       scheduledAt: scheduled,
       locationName: parsed.data.locationName,
       city: parsed.data.city,
-      expiresAt: scheduled, // expires when the activity is scheduled
+      isSpontaneous,
+      maxParticipants: parsed.data.maxParticipants ?? 1,
+      expiresAt,
     },
   });
 

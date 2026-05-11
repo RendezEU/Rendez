@@ -9,15 +9,23 @@ export async function GET(req: Request) {
   const userId = await verifyMobileToken(token);
   if (!userId) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
 
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    include: {
-      profile: { include: { photos: true, promptAnswers: true } },
-      billing: true,
-      reputation: true,
-      availabilitySlots: true,
-    },
-  });
+  const [user, datesCompleted] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        profile: { include: { photos: true, promptAnswers: true } },
+        billing: true,
+        reputation: true,
+        availabilitySlots: true,
+      },
+    }),
+    prisma.match.count({
+      where: {
+        OR: [{ userAId: userId }, { userBId: userId }],
+        status: { in: ["COMPLETED", "CONNECTED"] },
+      },
+    }),
+  ]);
 
   if (!user) return NextResponse.json({ error: "Not found." }, { status: 404 });
 
@@ -31,5 +39,6 @@ export async function GET(req: Request) {
     profile: user.profile,
     reputation: user.reputation,
     availabilitySlots: user.availabilitySlots,
+    datesCompleted,
   });
 }

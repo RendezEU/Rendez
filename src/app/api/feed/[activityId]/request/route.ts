@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getRequestUserId } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/client";
+import { sendPushToUser } from "@/lib/push/sendPush";
 import { z } from "zod";
 
 const schema = z.object({ message: z.string().max(200).optional() });
@@ -41,13 +42,29 @@ export async function POST(req: Request, { params }: { params: Promise<{ activit
   });
   if (existing) return NextResponse.json({ error: "Already requested." }, { status: 409 });
 
-  const request = await prisma.feedMatchRequest.create({
-    data: {
-      activityPostId: activityId,
-      requesterId: userId,
-      message: parsed.data.message,
-    },
-  });
+  const [request, requester] = await Promise.all([
+    prisma.feedMatchRequest.create({
+      data: {
+        activityPostId: activityId,
+        requesterId: userId,
+        message: parsed.data.message,
+      },
+    }),
+    prisma.user.findUnique({ where: { id: userId }, select: { name: true } }),
+  ]);
+
+  // Notify the post owner
+  const notifBody = parsed.data.message
+    ? parsed.data.message.length > 80
+      ? parsed.data.message.slice(0, 80) + "…"
+      : parsed.data.message
+    : "Tap to view their profile and decide.";
+  await sendPushToUser(
+    post.userId,
+    `${requester?.name ?? "Someone"} is interested in your post 💌`,
+    notifBody,
+    { screen: "matches" }
+  );
 
   return NextResponse.json(request, { status: 201 });
 }

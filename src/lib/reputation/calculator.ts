@@ -84,21 +84,33 @@ export async function applyStarRatings(
   // Bayesian rolling average: new_avg = (old_avg * n + new_value) / (n + 1)
   const avg = (prev: number, next: number) => (prev * n + next) / (n + 1);
 
+  const newShowUp = n === 0 ? showUp : avg(existing?.ratingShowUp ?? 5, showUp);
+  const newKindness = n === 0 ? kindness : avg(existing?.ratingKindness ?? 5, kindness);
+  const newProfileMatch = n === 0 ? profileMatch : avg(existing?.ratingProfileMatch ?? 5, profileMatch);
+
   await prisma.reputation.upsert({
     where: { userId },
     create: {
       userId,
-      ratingShowUp: showUp,
-      ratingKindness: kindness,
-      ratingProfileMatch: profileMatch,
+      ratingShowUp: newShowUp,
+      ratingKindness: newKindness,
+      ratingProfileMatch: newProfileMatch,
       totalRatings: 1,
     },
     update: {
-      ratingShowUp: avg(existing?.ratingShowUp ?? 5, showUp),
-      ratingKindness: avg(existing?.ratingKindness ?? 5, kindness),
-      ratingProfileMatch: avg(existing?.ratingProfileMatch ?? 5, profileMatch),
+      ratingShowUp: newShowUp,
+      ratingKindness: newKindness,
+      ratingProfileMatch: newProfileMatch,
       totalRatings: n + 1,
     },
+  });
+
+  // Keep profile.personalityScore in sync — average of 3 ratings, scaled 1–5 → 1–10
+  const avgRating = (newShowUp + newKindness + newProfileMatch) / 3;
+  const personalityScore = Math.round(avgRating * 2);
+  await prisma.profile.updateMany({
+    where: { userId },
+    data: { personalityScore: Math.max(1, Math.min(10, personalityScore)) },
   });
 }
 

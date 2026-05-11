@@ -20,8 +20,14 @@ export async function POST(req: Request) {
   const parsed = schema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: "Answer at least 3 prompts." }, { status: 400 });
 
-  const profile = await prisma.profile.findUnique({ where: { userId: userId } });
+  const profile = await prisma.profile.findUnique({
+    where: { userId: userId },
+    include: { photos: { take: 1 } },
+  });
   if (!profile) return NextResponse.json({ error: "Complete earlier steps first." }, { status: 400 });
+  if (profile.photos.length === 0) {
+    return NextResponse.json({ error: "Upload at least one photo before finishing your profile." }, { status: 400 });
+  }
 
   // Upsert each answer
   for (const a of parsed.data.answers) {

@@ -37,6 +37,17 @@ export async function POST(req: Request) {
         });
       }
 
+      if (type === "extra_messages") {
+        const matchId = session.metadata?.matchId;
+        const side = session.metadata?.side;
+        if (matchId && side) {
+          await prisma.match.update({
+            where: { id: matchId },
+            data: side === "A" ? { extraMsgGrantedA: true } : { extraMsgGrantedB: true },
+          });
+        }
+      }
+
       if (type === "subscription" && session.subscription) {
         await prisma.billing.updateMany({
           where: { userId },

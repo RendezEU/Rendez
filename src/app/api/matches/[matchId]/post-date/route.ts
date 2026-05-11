@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getRequestUserId } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/client";
 import { triggerUserEvent } from "@/lib/pusher/server";
+import { sendPushToUser } from "@/lib/push/sendPush";
 import { addReputationEvent, applyStarRatings } from "@/lib/reputation/calculator";
 import { z } from "zod";
 
@@ -55,20 +56,44 @@ export async function POST(req: Request, { params }: { params: Promise<{ matchId
     const bothConnect = decisions.every((d) => d.decision === "CONNECT");
 
     if (bothConnect) {
-      // Both chose CONNECT — send contact info via Pusher private channels
+      // Promote match to CONNECTED and lift the message cap for both sides
+      await prisma.match.update({
+        where: { id: matchId },
+        data: {
+          status: "CONNECTED",
+          extraMsgGrantedA: true,
+          extraMsgGrantedB: true,
+        },
+      });
+
       const [userA, userB] = await Promise.all([
         prisma.user.findUnique({ where: { id: match.userAId }, select: { email: true, name: true } }),
         prisma.user.findUnique({ where: { id: match.userBId }, select: { email: true, name: true } }),
       ]);
 
-      await triggerUserEvent(match.userAId, "contact-unlocked", {
-        matchId,
-        contact: { name: userB?.name, email: userB?.email },
-      });
-      await triggerUserEvent(match.userBId, "contact-unlocked", {
-        matchId,
-        contact: { name: userA?.name, email: userA?.email },
-      });
+      // Real-time Pusher + push notification to both users
+      await Promise.all([
+        triggerUserEvent(match.userAId, "contact-unlocked", {
+          matchId,
+          contact: { name: userB?.name, email: userB?.email },
+        }),
+        triggerUserEvent(match.userBId, "contact-unlocked", {
+          matchId,
+          contact: { name: userA?.name, email: userA?.email },
+        }),
+        sendPushToUser(
+          match.userAId,
+          `You and ${userB?.name ?? "your date"} both connected! 🎉`,
+          "You can now message freely and share contact details.",
+          { matchId, screen: "matches" }
+        ),
+        sendPushToUser(
+          match.userBId,
+          `You and ${userA?.name ?? "your date"} both connected! 🎉`,
+          "You can now message freely and share contact details.",
+          { matchId, screen: "matches" }
+        ),
+      ]);
     }
   }
 

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getRequestUserId } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/client";
+import { geocodeCity } from "@/lib/geocode";
 import { z } from "zod";
 
 const schema = z.object({
@@ -19,6 +20,8 @@ export async function POST(req: Request) {
 
   const { birthDate, gender, genderPreferences, city, maxDistanceKm } = parsed.data;
 
+  const coords = await geocodeCity(city);
+
   await prisma.profile.upsert({
     where: { userId: userId },
     create: {
@@ -30,8 +33,17 @@ export async function POST(req: Request) {
       maxDistanceKm,
       intent: "OPEN",
       personalityScore: 5,
+      latitude: coords?.lat ?? null,
+      longitude: coords?.lng ?? null,
     },
-    update: { birthDate: new Date(birthDate), gender, genderPreferences, city, maxDistanceKm },
+    update: {
+      birthDate: new Date(birthDate),
+      gender,
+      genderPreferences,
+      city,
+      maxDistanceKm,
+      ...(coords ? { latitude: coords.lat, longitude: coords.lng } : {}),
+    },
   });
 
   await prisma.user.update({

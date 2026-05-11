@@ -9,21 +9,29 @@ export async function GET(
   await getRequestUserId(req); // must be authenticated
   const { userId } = await params;
 
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: {
-      id: true,
-      name: true,
-      profile: {
-        include: {
-          photos: true,
-          promptAnswers: true,
+  const [user, datesCompleted] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        name: true,
+        profile: {
+          include: {
+            photos: true,
+            promptAnswers: true,
+          },
         },
       },
-    },
-  });
+    }),
+    prisma.match.count({
+      where: {
+        OR: [{ userAId: userId }, { userBId: userId }],
+        status: { in: ["COMPLETED", "CONNECTED"] },
+      },
+    }),
+  ]);
 
   if (!user) return NextResponse.json({ error: "Not found." }, { status: 404 });
 
-  return NextResponse.json(user);
+  return NextResponse.json({ ...user, datesCompleted });
 }

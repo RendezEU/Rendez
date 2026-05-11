@@ -21,6 +21,8 @@ enum IntentType {
   CASUAL
   SERIOUS
   OPEN
+  FRIENDSHIP
+  NETWORKING
 }
 
 enum ActivityCategory {
@@ -69,6 +71,7 @@ enum MatchStatus {
   CONFIRMED
   DATE_ACTIVE
   COMPLETED
+  CONNECTED
   CANCELLED
   EXPIRED
 }
@@ -173,10 +176,12 @@ model Profile {
   longitude           Float?
   maxDistanceKm       Int              @default(25)
   intent              IntentType
+  intents             IntentType[] @default([])
   personalityScore    Int
   preferredActivities ActivityCategory[]
   customActivities    String?
   bio                 String?          @db.Text
+  photoVerified       Boolean          @default(false)
   promptAnswers       PromptAnswer[]
   photos              ProfilePhoto[]
   updatedAt           DateTime         @updatedAt
@@ -213,6 +218,7 @@ model AvailabilitySlot {
   isRecurring  Boolean   @default(false)
   specificDate DateTime?
   isActive     Boolean   @default(true)
+  blockedUntil DateTime?
   createdAt    DateTime  @default(now())
 
   @@unique([userId, dayOfWeek, timeBlock])
@@ -239,6 +245,8 @@ model Match {
   userBDecision    Boolean?
   userADecidedAt   DateTime?
   userBDecidedAt   DateTime?
+  extraMsgGrantedA Boolean          @default(false)
+  extraMsgGrantedB Boolean          @default(false)
   messages         Message[]
   systemActions    SystemAction[]
   finalizedPlan    FinalizedPlan?
@@ -312,6 +320,8 @@ model ActivityPost {
   locationLng      Float?
   city             String
   isActive         Boolean          @default(true)
+  isSpontaneous    Boolean          @default(false)
+  maxParticipants  Int              @default(1)
   matchRequests    FeedMatchRequest[]
   createdAt        DateTime         @default(now())
   expiresAt        DateTime
