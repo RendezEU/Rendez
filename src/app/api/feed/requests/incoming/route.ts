@@ -11,7 +11,7 @@ export async function GET(req: Request) {
       activityPost: { userId },
     },
     include: {
-      activityPost: { select: { id: true, activityCategory: true, title: true } },
+      activityPost: { select: { id: true, activityCategory: true, title: true, activityIntent: true } },
       requester: {
         select: {
           id: true,
@@ -23,6 +23,7 @@ export async function GET(req: Request) {
               gender: true,
               preferredActivities: true,
               bio: true,
+              intents: true,
               photos: { select: { url: true }, orderBy: { order: "asc" }, take: 1 },
               promptAnswers: { select: { promptKey: true, answer: true } },
             },

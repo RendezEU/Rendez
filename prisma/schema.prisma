@@ -25,6 +25,13 @@ enum IntentType {
   NETWORKING
 }
 
+enum ActivityIntentType {
+  DATING
+  FRIENDS
+  NETWORKING
+  OPEN
+}
+
 enum ActivityCategory {
   RUNNING
   COFFEE_WALK
@@ -319,6 +326,7 @@ model ActivityPost {
   locationLat      Float?
   locationLng      Float?
   city             String
+  activityIntent   ActivityIntentType @default(OPEN)
   isActive         Boolean          @default(true)
   isSpontaneous    Boolean          @default(false)
   maxParticipants  Int              @default(1)

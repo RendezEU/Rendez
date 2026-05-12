@@ -46,6 +46,7 @@ export async function GET(req: Request) {
       locationName: p.locationName,
       isSpontaneous: p.isSpontaneous,
       maxParticipants: p.maxParticipants,
+      activityIntent: p.activityIntent,
       createdAt: p.createdAt,
       creator: p.user,
       requestCount: p._count.matchRequests,
@@ -55,9 +56,11 @@ export async function GET(req: Request) {
 }
 
 const VALID_ACTIVITIES = ["RUNNING","COFFEE_WALK","DRINKS","TENNIS","HIKING","CYCLING","YOGA","COOKING","MUSEUM","PICNIC","CLIMBING","DANCING"] as const;
+const VALID_INTENTS = ["DATING","FRIENDS","NETWORKING","OPEN"] as const;
 
 const schema = z.object({
   activityCategory: z.enum(VALID_ACTIVITIES),
+  activityIntent: z.enum(VALID_INTENTS).optional().default("OPEN"),
   title: z.string().min(1).max(100).transform((s) => s.trim()),
   description: z.string().max(600).nullish().transform((v) => v ?? undefined),
   scheduledAt: z.string().nullish().transform((v) => v ?? undefined),
@@ -95,6 +98,7 @@ export async function POST(req: Request) {
     data: {
       userId: userId,
       activityCategory: parsed.data.activityCategory,
+      activityIntent: parsed.data.activityIntent,
       title: parsed.data.title,
       description: parsed.data.description,
       scheduledAt: scheduled,
