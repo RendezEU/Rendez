@@ -5,27 +5,35 @@ import { z } from "zod";
 
 export async function GET(req: Request) {
   const userId = await getRequestUserId(req);
-  const posts = await prisma.activityPost.findMany({
-    where: { isActive: true, expiresAt: { gt: new Date() }, userId: { not: userId } },
-    orderBy: { scheduledAt: "asc" },
-    take: 30,
-    include: {
-      user: {
-        select: {
-          id: true, name: true,
-          profile: {
-            select: {
-              gender: true, birthDate: true, city: true,
-              preferredActivities: true, bio: true, intents: true, photoVerified: true,
-              promptAnswers: { orderBy: { displayOrder: "asc" }, take: 2 },
-              photos: { where: { isPrimary: true }, take: 1 },
+  const [posts, myRequests] = await Promise.all([
+    prisma.activityPost.findMany({
+      where: { isActive: true, expiresAt: { gt: new Date() }, userId: { not: userId } },
+      orderBy: { scheduledAt: "asc" },
+      take: 30,
+      include: {
+        user: {
+          select: {
+            id: true, name: true,
+            profile: {
+              select: {
+                gender: true, birthDate: true, city: true,
+                preferredActivities: true, bio: true, intents: true, photoVerified: true,
+                promptAnswers: { orderBy: { displayOrder: "asc" }, take: 2 },
+                photos: { where: { isPrimary: true }, take: 1 },
+              },
             },
           },
         },
+        _count: { select: { matchRequests: true } },
       },
-      _count: { select: { matchRequests: true } },
-    },
-  });
+    }),
+    prisma.feedMatchRequest.findMany({
+      where: { requesterId: userId },
+      select: { activityPostId: true },
+    }),
+  ]);
+
+  const myRequestedIds = new Set(myRequests.map((r) => r.activityPostId));
 
   return NextResponse.json(
     posts.map((p) => ({
@@ -41,6 +49,7 @@ export async function GET(req: Request) {
       createdAt: p.createdAt,
       creator: p.user,
       requestCount: p._count.matchRequests,
+      myRequest: myRequestedIds.has(p.id),
     }))
   );
 }
