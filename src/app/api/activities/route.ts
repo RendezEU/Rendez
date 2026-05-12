@@ -49,20 +49,23 @@ const VALID_ACTIVITIES = ["RUNNING","COFFEE_WALK","DRINKS","TENNIS","HIKING","CY
 
 const schema = z.object({
   activityCategory: z.enum(VALID_ACTIVITIES),
-  title: z.string().min(1).max(100),
-  description: z.string().max(600).optional(),
-  scheduledAt: z.string().optional(),
-  locationName: z.string().optional(),
-  city: z.string().min(1),
-  isSpontaneous: z.boolean().optional(),
-  maxParticipants: z.number().int().min(1).max(6).optional(),
+  title: z.string().min(1).max(100).transform((s) => s.trim()),
+  description: z.string().max(600).nullish().transform((v) => v ?? undefined),
+  scheduledAt: z.string().nullish().transform((v) => v ?? undefined),
+  locationName: z.string().nullish().transform((v) => v ?? undefined),
+  city: z.string().min(1).transform((s) => s.trim()),
+  isSpontaneous: z.boolean().optional().default(false),
+  maxParticipants: z.number().int().min(1).max(6).optional().default(1),
 });
 
 export async function POST(req: Request) {
   const userId = await getRequestUserId(req);
   const body = await req.json();
   const parsed = schema.safeParse(body);
-  if (!parsed.success) return NextResponse.json({ error: "Invalid.", details: parsed.error.flatten() }, { status: 400 });
+  if (!parsed.success) {
+    console.error("POST /api/activities validation error", JSON.stringify(parsed.error.flatten()));
+    return NextResponse.json({ error: parsed.error.flatten().fieldErrors }, { status: 400 });
+  }
 
   const isSpontaneous = parsed.data.isSpontaneous ?? false;
   const now = new Date();
