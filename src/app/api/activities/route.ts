@@ -5,9 +5,17 @@ import { z } from "zod";
 
 export async function GET(req: Request) {
   const userId = await getRequestUserId(req);
+  const { searchParams } = new URL(req.url);
+  const cityParam = searchParams.get("city")?.trim() || null;
+
   const [posts, myRequests] = await Promise.all([
     prisma.activityPost.findMany({
-      where: { isActive: true, expiresAt: { gt: new Date() }, userId: { not: userId } },
+      where: {
+        isActive: true,
+        expiresAt: { gt: new Date() },
+        userId: { not: userId },
+        ...(cityParam ? { city: { contains: cityParam, mode: "insensitive" } } : {}),
+      },
       orderBy: { scheduledAt: "asc" },
       take: 30,
       include: {

@@ -19,7 +19,10 @@ export async function POST(
 
   const feedRequest = await prisma.feedMatchRequest.findUnique({
     where: { id: requestId },
-    include: { activityPost: true, requester: { select: { name: true } } },
+    include: {
+      activityPost: { select: { id: true, userId: true, title: true, activityCategory: true } },
+      requester: { select: { name: true } },
+    },
   });
   if (!feedRequest) return NextResponse.json({ error: "Not found." }, { status: 404 });
   if (feedRequest.activityPost.userId !== userId)
@@ -34,6 +37,13 @@ export async function POST(
       where: { id: requestId },
       data: { status: "DECLINED" },
     });
+    // Notify requester so they're not left in limbo
+    await sendPushToUser(
+      feedRequest.requesterId,
+      "Interest not accepted",
+      `Your interest in "${feedRequest.activityPost.title}" wasn't a match this time. Keep exploring the feed!`,
+      { screen: "feed" }
+    );
     return NextResponse.json({ ok: true });
   }
 
