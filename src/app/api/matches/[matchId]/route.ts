@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getRequestUserId } from "@/lib/auth/session";
+import { requireAuth } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/client";
 
 async function autoTransitionMatch(matchId: string) {
@@ -15,13 +15,15 @@ async function autoTransitionMatch(matchId: string) {
 
   if (match.status === "CONFIRMED" && hoursAfter >= 0) {
     await prisma.match.update({ where: { id: matchId }, data: { status: "DATE_ACTIVE" } });
-  } else if (match.status === "DATE_ACTIVE" && hoursAfter >= 4) {
+  } else if (match.status === "DATE_ACTIVE" && hoursAfter >= 3) {
     await prisma.match.update({ where: { id: matchId }, data: { status: "COMPLETED" } });
   }
 }
 
 export async function GET(req: Request, { params }: { params: Promise<{ matchId: string }> }) {
-  const userId = await getRequestUserId(req);
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
+  const userId = auth;
   const { matchId } = await params;
 
   // Auto-transition status based on scheduled time before returning
@@ -30,8 +32,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ matchId:
   const match = await prisma.match.findUnique({
     where: { id: matchId },
     include: {
-      userA: { select: { id: true, name: true, profile: { include: { photos: true, promptAnswers: true, availabilitySlots: { select: { dayOfWeek: true, timeBlock: true }, where: { isActive: true, OR: [{ blockedUntil: null }, { blockedUntil: { lt: new Date() } }] } } } } } },
-      userB: { select: { id: true, name: true, profile: { include: { photos: true, promptAnswers: true, availabilitySlots: { select: { dayOfWeek: true, timeBlock: true }, where: { isActive: true, OR: [{ blockedUntil: null }, { blockedUntil: { lt: new Date() } }] } } } } } },
+      userA: { select: { id: true, name: true, availabilitySlots: { select: { dayOfWeek: true, timeBlock: true }, where: { isActive: true, OR: [{ blockedUntil: null }, { blockedUntil: { lt: new Date() } }] } }, profile: { include: { photos: true, promptAnswers: true } } } },
+      userB: { select: { id: true, name: true, availabilitySlots: { select: { dayOfWeek: true, timeBlock: true }, where: { isActive: true, OR: [{ blockedUntil: null }, { blockedUntil: { lt: new Date() } }] } }, profile: { include: { photos: true, promptAnswers: true } } } },
       finalizedPlan: true,
       systemActions: { orderBy: { createdAt: "asc" } },
     },

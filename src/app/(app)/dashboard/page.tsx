@@ -48,10 +48,10 @@ export default async function DashboardPage() {
       <div className="bg-white border border-stone-200 rounded-2xl p-4 flex items-center justify-between">
         <div>
           <div className="text-sm font-medium text-stone-700">
-            {isPremium ? "Premium member" : `${totalCredits} date credits left`}
+            {isPremium ? "Premium member" : `${totalCredits} Rendez credits left`}
           </div>
           <div className="text-xs text-stone-400 mt-0.5">
-            {isPremium ? "Unlimited confirmed dates" : "Free credits from onboarding"}
+            {isPremium ? "Unlimited confirmed Rendez" : "Free credits from onboarding"}
           </div>
         </div>
         {!isPremium && (
@@ -79,10 +79,10 @@ export default async function DashboardPage() {
         </Link>
       )}
 
-      {/* Active & confirmed dates */}
+      {/* Active & confirmed Rendez */}
       {confirmedMatches.length > 0 && (
         <div>
-          <h2 className="text-base font-semibold text-stone-900 mb-3">Your upcoming dates</h2>
+          <h2 className="text-base font-semibold text-stone-900 mb-3">Your upcoming Rendez</h2>
           <div className="space-y-3">
             {confirmedMatches.map((match) => {
               const other = match.userAId === userId ? match.userB : match.userA;
@@ -110,7 +110,7 @@ export default async function DashboardPage() {
                         <span>{ACTIVITY_EMOJIS[match.activityCategory]}</span>
                         {isActive && (
                           <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">
-                            Date active!
+                            Rendez active!
                           </span>
                         )}
                       </div>
@@ -142,7 +142,7 @@ export default async function DashboardPage() {
       {confirmedMatches.length === 0 && pendingMatches === 0 && (
         <div className="text-center py-12">
           <div className="text-4xl mb-3">🎯</div>
-          <div className="font-semibold text-stone-700">No active dates yet</div>
+          <div className="font-semibold text-stone-700">No active Rendez yet</div>
           <p className="text-sm text-stone-400 mt-1">Check your matches or browse the activity feed.</p>
           <Link href="/matches" className="inline-block mt-4 bg-brand-600 text-white px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-brand-700 transition-colors">
             View matches

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getRequestUserId } from "@/lib/auth/session";
+import { requireAuth } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/client";
 import { z } from "zod";
 import { cookies } from "next/headers";
@@ -15,19 +15,17 @@ const answerSchema = z.object({
 const schema = z.object({ answers: z.array(answerSchema).min(3) });
 
 export async function POST(req: Request) {
-  const userId = await getRequestUserId(req);
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
+  const userId = auth;
   const body = await req.json();
   const parsed = schema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: "Answer at least 3 prompts." }, { status: 400 });
 
-  const profile = await prisma.profile.findUnique({
-    where: { userId: userId },
-    include: { photos: { take: 1 } },
-  });
+  // NOTE: photos step comes AFTER prompts in the onboarding flow, so we must
+  // NOT require a photo here. Photo presence is enforced later (feed visibility).
+  const profile = await prisma.profile.findUnique({ where: { userId: userId } });
   if (!profile) return NextResponse.json({ error: "Complete earlier steps first." }, { status: 400 });
-  if (profile.photos.length === 0) {
-    return NextResponse.json({ error: "Upload at least one photo before finishing your profile." }, { status: 400 });
-  }
 
   // Upsert each answer
   for (const a of parsed.data.answers) {

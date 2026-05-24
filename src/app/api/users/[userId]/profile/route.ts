@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
-import { getRequestUserId } from "@/lib/auth/session";
+import { requireAuth } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/client";
 
 export async function GET(
   req: Request,
   { params }: { params: Promise<{ userId: string }> }
 ) {
-  await getRequestUserId(req); // must be authenticated
+  const authCheck = await requireAuth(req);
+  if (authCheck instanceof NextResponse) return authCheck;
   const { userId } = await params;
 
   const [user, datesCompleted] = await Promise.all([

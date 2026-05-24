@@ -75,6 +75,8 @@ export async function POST(req: Request) {
       await prisma.billing.updateMany({
         where: { stripeSubscriptionId: sub.id },
         data: {
+          // Reactivate tier if subscription is live again (e.g. past_due → active)
+          ...(sub.status === "active" ? { tier: "PREMIUM" } : {}),
           subscriptionStatus: sub.status,
           subscriptionEndsAt: sub.current_period_end
             ? new Date(sub.current_period_end * 1000)

@@ -36,7 +36,7 @@ enum ActivityCategory {
   RUNNING
   COFFEE_WALK
   DRINKS
-  TENNIS
+  DOG_WALKING
   HIKING
   CYCLING
   YOGA
@@ -45,6 +45,7 @@ enum ActivityCategory {
   PICNIC
   CLIMBING
   DANCING
+  TENNIS
 }
 
 enum TimeBlock {
@@ -92,6 +93,8 @@ enum SystemActionType {
   RUNNING_LATE
   ARRIVED
   CANCEL
+  ICEBREAKER_QUESTION
+  ICEBREAKER_ANSWER
 }
 
 enum PostDateChoice {
@@ -116,6 +119,8 @@ model User {
   updatedAt          DateTime  @updatedAt
   onboardingComplete Boolean   @default(false)
   onboardingStep     Int       @default(0)
+  otpCode            String?
+  otpExpiry          DateTime?
 
   accounts          Account[]
   sessions          Session[]
@@ -131,6 +136,10 @@ model User {
   reputationEvents  ReputationEvent[]
   billing           Billing?
   pushTokens        PushToken[]
+  blocksGiven       Block[]             @relation("BlocksGiven")
+  blocksReceived    Block[]             @relation("BlocksReceived")
+  reportsGiven      Report[]            @relation("ReportsGiven")
+  reportsReceived   Report[]            @relation("ReportsReceived")
 
   @@index([email])
 }
@@ -189,6 +198,7 @@ model Profile {
   customActivities    String?
   bio                 String?          @db.Text
   photoVerified       Boolean          @default(false)
+  allowShareCard      Boolean          @default(true)
   promptAnswers       PromptAnswer[]
   photos              ProfilePhoto[]
   updatedAt           DateTime         @updatedAt
@@ -321,16 +331,20 @@ model ActivityPost {
   activityCategory ActivityCategory
   title            String
   description      String?          @db.Text
-  scheduledAt      DateTime
+  scheduledAt      DateTime?
   locationName     String?
   locationLat      Float?
   locationLng      Float?
   city             String
   activityIntent   ActivityIntentType @default(OPEN)
   isActive         Boolean          @default(true)
-  isSpontaneous    Boolean          @default(false)
-  maxParticipants  Int              @default(1)
+  isSpontaneous      Boolean          @default(false)
+  isFlexible         Boolean          @default(false)
+  isRecurring        Boolean          @default(false)
+  recurringDayOfWeek String?
+  maxParticipants    Int              @default(1)
   matchRequests    FeedMatchRequest[]
+  reports          Report[]
   createdAt        DateTime         @default(now())
   expiresAt        DateTime
 
@@ -455,4 +469,36 @@ model PushToken {
   createdAt DateTime @default(now())
 
   @@index([userId])
+}
+
+// ─── SAFETY ──────────────────────────────────────────────────────────────────
+
+model Block {
+  id        String   @id @default(cuid())
+  blockerId String
+  blocker   User     @relation("BlocksGiven",    fields: [blockerId], references: [id], onDelete: Cascade)
+  blockedId String
+  blocked   User     @relation("BlocksReceived", fields: [blockedId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([blockerId, blockedId])
+  @@index([blockerId])
+}
+
+model Report {
+  id             String        @id @default(cuid())
+  reporterId     String
+  reporter       User          @relation("ReportsGiven",     fields: [reporterId],     references: [id], onDelete: Cascade)
+  reportedUserId String?
+  reportedUser   User?         @relation("ReportsReceived",  fields: [reportedUserId], references: [id], onDelete: Cascade)
+  reportedPostId String?
+  reportedPost   ActivityPost? @relation(fields: [reportedPostId], references: [id], onDelete: Cascade)
+  reason         String
+  notes          String?       @db.Text
+  resolved       Boolean       @default(false)
+  createdAt      DateTime      @default(now())
+
+  @@index([reporterId])
+  @@index([reportedUserId])
+  @@index([reportedPostId])
 }

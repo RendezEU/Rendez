@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getRequestUserId } from "@/lib/auth/session";
+import { requireAuth } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/client";
 import { triggerMatchEvent } from "@/lib/pusher/server";
 import { sendPushToUser } from "@/lib/push/sendPush";
@@ -9,7 +9,9 @@ import { z } from "zod";
 const client = new Anthropic();
 
 export async function GET(req: Request, { params }: { params: Promise<{ matchId: string }> }) {
-  const userId = await getRequestUserId(req);
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
+  const userId = auth;
   const { matchId } = await params;
 
   const match = await prisma.match.findUnique({
@@ -41,9 +43,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ matchId:
   const formatAnswers = (answers: { promptKey: string; answer: string }[]) =>
     answers.map((a) => `"${a.promptKey}": ${a.answer}`).join("\n");
 
-  const activity = match.activityCategory?.replace(/_/g, " ").toLowerCase() ?? "a date";
+  const activity = match.activityCategory?.replace(/_/g, " ").toLowerCase() ?? "a Rendez";
 
-  const prompt = `You are crafting ice breaker questions for two people who just matched on Rendez, an activity-based dating app. They'll meet for ${activity}.
+  const prompt = `You are writing ice breaker questions for two people who matched on Rendez, an activity-based social app. They'll meet for ${activity}.
 
 Their profiles:
 
@@ -55,44 +57,52 @@ ${them.name}:
 ${them.profile?.promptAnswers.length ? formatAnswers(them.profile.promptAnswers) : "No prompts yet."}
 Interests: ${them.profile?.preferredActivities.join(", ") ?? "none"}
 
-Generate exactly 5 ice breaker questions that feel fresh and human — not generic dating app clichés.
-
-Mix these styles:
-- 1-2 "this or that" binary choices that feel specific to their situation or ${activity}
-- 1-2 imaginative reveals (surprising, slightly funny, a little vulnerable — e.g. "What's the last thing you Googled at 2am?", "Best excuse you've ever used to cancel plans?")
-- 1 activity-specific question tied directly to their upcoming ${activity}
+Generate exactly 5 "this or that" ice breaker questions. Each must have exactly 2 answer options the recipient can tap.
 
 Rules:
-- Each question under 65 characters
-- No clichéd questions like "favorite movie" or "what do you do for fun"
-- If their profiles hint at something interesting, use it — make it feel personal
-- Avoid yes/no questions unless they're "would you rather" style with two options
-- Tone: warm, curious, a little playful — like a friend asking, not an interviewer
+- Question text under 55 characters
+- Each option under 20 characters (label only, no sentence)
+- At least 1 tied to their upcoming ${activity}
+- At least 1 referencing something from the profiles above
+- Make them feel fresh and specific — avoid "favorite movie", "pets or no pets", obvious clichés
+- Add a relevant emoji to each option
+- Tone: playful, a little revealing, light
 
-Respond with a JSON array only, no markdown:
-["question 1", "question 2", "question 3", "question 4", "question 5"]`;
+Return a JSON array only, no markdown:
+[
+  { "question": "Tea or coffee?", "options": ["Tea ☕", "Coffee ☕"] },
+  ...
+]`;
 
   try {
     const response = await client.messages.create({
       model: "claude-haiku-4-5-20251001",
-      max_tokens: 500,
+      max_tokens: 600,
       messages: [{ role: "user", content: prompt }],
     });
 
     const text = response.content[0].type === "text" ? response.content[0].text : "[]";
     const found = text.match(/\[[\s\S]*\]/);
-    const starters: string[] = found ? JSON.parse(found[0]) : [];
+    const raw: { question: string; options: string[] }[] = found ? JSON.parse(found[0]) : [];
+    const questions = raw
+      .filter((q) => q.question && Array.isArray(q.options) && q.options.length === 2)
+      .slice(0, 5);
 
-    return NextResponse.json({ starters: starters.slice(0, 5) });
+    return NextResponse.json({ questions });
   } catch {
-    return NextResponse.json({ starters: [] });
+    return NextResponse.json({ questions: [] });
   }
 }
 
-const postSchema = z.object({ question: z.string().min(5).max(200) });
+const postSchema = z.object({
+  question: z.string().min(5).max(200),
+  options: z.array(z.string().min(1).max(60)).length(2),
+});
 
 export async function POST(req: Request, { params }: { params: Promise<{ matchId: string }> }) {
-  const userId = await getRequestUserId(req);
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
+  const userId = auth;
   const { matchId } = await params;
   const body = await req.json();
   const parsed = postSchema.safeParse(body);
@@ -104,7 +114,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ matchId
     return NextResponse.json({ error: "Forbidden." }, { status: 403 });
   }
 
-  // 1 icebreaker per user per match
+  // 1 icebreaker question per user per match
   const existing = await prisma.systemAction.findFirst({
     where: { matchId, initiatorId: userId, actionType: "ICEBREAKER_QUESTION" },
   });
@@ -115,7 +125,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ matchId
       matchId,
       initiatorId: userId,
       actionType: "ICEBREAKER_QUESTION",
-      payload: { question: parsed.data.question },
+      payload: { question: parsed.data.question, options: parsed.data.options },
     },
   });
 
@@ -126,7 +136,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ matchId
   await sendPushToUser(
     recipientId,
     `${sender?.name ?? "Your match"} sent an ice breaker 🧊`,
-    parsed.data.question,
+    `${parsed.data.question} (${parsed.data.options.join(" or ")})`,
     { matchId, screen: "matches" }
   );
 

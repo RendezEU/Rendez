@@ -60,7 +60,7 @@ export default async function ReputationPage() {
             <div className="mt-4 pt-4 border-t border-stone-100 grid grid-cols-3 gap-2 text-center text-sm">
               <div>
                 <div className="font-bold">{rep.totalDates}</div>
-                <div className="text-stone-400 text-xs">Dates</div>
+                <div className="text-stone-400 text-xs">Rendez</div>
               </div>
               <div>
                 <div className="font-bold text-red-500">{rep.totalNoShows}</div>
@@ -102,7 +102,7 @@ export default async function ReputationPage() {
         <div className="text-center py-12">
           <div className="text-4xl mb-3">📊</div>
           <div className="font-semibold text-stone-700">No reputation data yet</div>
-          <p className="text-sm text-stone-400 mt-1">Complete your first date to start building your score.</p>
+          <p className="text-sm text-stone-400 mt-1">Complete your first Rendez to start building your score.</p>
         </div>
       )}
     </div>

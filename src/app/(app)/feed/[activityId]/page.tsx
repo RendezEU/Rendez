@@ -40,7 +40,7 @@ export default async function ActivityDetailPage({ params }: { params: Promise<{
             <div className="text-sm text-stone-500">{ACTIVITY_LABELS[post.activityCategory]}</div>
           </div>
         </div>
-        <div className="text-sm text-stone-600">{formatDate(post.scheduledAt)}</div>
+        <div className="text-sm text-stone-600">{post.scheduledAt ? formatDate(post.scheduledAt) : "Flexible"}</div>
         {post.locationName && <div className="text-sm text-stone-400">{post.locationName}</div>}
       </div>
 

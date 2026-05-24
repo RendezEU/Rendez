@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
-import { getRequestUserId } from "@/lib/auth/session";
+import { requireAuth } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/client";
 
 export async function POST(
   req: Request,
   { params }: { params: Promise<{ matchId: string }> }
 ) {
-  const userId = await getRequestUserId(req);
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
+  const userId = auth;
   const { matchId } = await params;
 
   // Mark all messages in this match NOT sent by this user as read

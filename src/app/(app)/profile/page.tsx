@@ -57,7 +57,7 @@ export default async function ProfilePage() {
             <div className="grid grid-cols-3 gap-2 text-center text-xs">
               <div>
                 <div className="font-bold text-stone-800">{rep.totalDates}</div>
-                <div className="text-stone-400">Dates</div>
+                <div className="text-stone-400">Rendez</div>
               </div>
               <div>
                 <div className="font-bold text-stone-800">{Math.round(rep.showUpScore * 100)}%</div>

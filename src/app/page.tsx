@@ -24,7 +24,7 @@ export default function LandingPage() {
             <span className="text-brand-600">doing things</span>
           </h1>
           <p className="text-lg text-stone-500 mb-8 max-w-md mx-auto">
-            No swiping. No ghost conversations. Rendez matches you with someone for a specific activity — coffee, tennis, a walk — and gets out of the way.
+            No swiping. No ghost conversations. Rendez matches you with someone for a specific activity — coffee, a dog walk, a hike — and gets out of the way.
           </p>
           <Link href="/register" className="inline-block bg-brand-600 text-white px-8 py-3.5 rounded-xl text-base font-medium hover:bg-brand-700 transition-colors shadow-sm">
             Get started — it&apos;s free
@@ -58,14 +58,14 @@ export default function LandingPage() {
       <section className="px-6 py-16 border-t border-stone-100">
         <div className="max-w-2xl mx-auto text-center">
           <h2 className="text-2xl font-bold text-stone-900 mb-3">Simple pricing</h2>
-          <p className="text-stone-500 mb-8">Pay only when you go on dates. No hidden fees.</p>
+          <p className="text-stone-500 mb-8">Pay only when you have a Rendez. No hidden fees.</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
             <div className="border border-stone-200 rounded-2xl p-6">
               <div className="text-sm font-medium text-stone-500 mb-1">Free</div>
               <div className="text-3xl font-bold text-stone-900 mb-4">€0</div>
               <ul className="space-y-2 text-sm text-stone-600">
                 <li>✓ Full profile &amp; onboarding</li>
-                <li>✓ First 3 confirmed dates free</li>
+                <li>✓ First 3 confirmed Rendez free</li>
                 <li>✓ AI matching weekly</li>
                 <li>✓ Activity feed access</li>
               </ul>
@@ -74,9 +74,9 @@ export default function LandingPage() {
               <div className="absolute -top-3 left-4 bg-brand-600 text-white text-xs font-medium px-2 py-0.5 rounded-full">Popular</div>
               <div className="text-sm font-medium text-brand-600 mb-1">Premium</div>
               <div className="text-3xl font-bold text-stone-900 mb-1">€11<span className="text-base font-normal text-stone-500">/mo</span></div>
-              <div className="text-xs text-stone-400 mb-4">or €2–3 per confirmed date</div>
+              <div className="text-xs text-stone-400 mb-4">or €2–3 per confirmed Rendez</div>
               <ul className="space-y-2 text-sm text-stone-600">
-                <li>✓ Unlimited confirmed dates</li>
+                <li>✓ Unlimited confirmed Rendez</li>
                 <li>✓ Priority matching</li>
                 <li>✓ High-reliability match pool</li>
                 <li>✓ Advanced filters</li>

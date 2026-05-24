@@ -34,8 +34,8 @@ export async function GET(req: Request) {
 
   for (const m of upcoming24) {
     const loc = m.finalizedPlan?.locationName ? ` at ${m.finalizedPlan.locationName}` : "";
-    await sendPushToUser(m.userAId, "Your date is tomorrow! 📅", `Reminder: you're meeting ${m.userB.name}${loc} tomorrow.`, { matchId: m.id, screen: "matches" });
-    await sendPushToUser(m.userBId, "Your date is tomorrow! 📅", `Reminder: you're meeting ${m.userA.name}${loc} tomorrow.`, { matchId: m.id, screen: "matches" });
+    await sendPushToUser(m.userAId, "Your Rendez is tomorrow! 📅", `Your Rendez with ${m.userB.name}${loc} is tomorrow — get ready!`, { matchId: m.id, screen: "matches" });
+    await sendPushToUser(m.userBId, "Your Rendez is tomorrow! 📅", `Your Rendez with ${m.userA.name}${loc} is tomorrow — get ready!`, { matchId: m.id, screen: "matches" });
   }
 
   // Confirmed matches happening in ~2h (between 1h50m and 2h10m from now)
@@ -55,8 +55,8 @@ export async function GET(req: Request) {
 
   for (const m of upcoming2h) {
     const loc = m.finalizedPlan?.locationName ? ` at ${m.finalizedPlan.locationName}` : "";
-    await sendPushToUser(m.userAId, "Your date is in 2 hours! ⏰", `Get ready — you're meeting ${m.userB.name}${loc} soon!`, { matchId: m.id, screen: "matches" });
-    await sendPushToUser(m.userBId, "Your date is in 2 hours! ⏰", `Get ready — you're meeting ${m.userA.name}${loc} soon!`, { matchId: m.id, screen: "matches" });
+    await sendPushToUser(m.userAId, "Your Rendez is in 2 hours! ⏰", `Your Rendez with ${m.userB.name}${loc} is coming up — see you there!`, { matchId: m.id, screen: "matches" });
+    await sendPushToUser(m.userBId, "Your Rendez is in 2 hours! ⏰", `Your Rendez with ${m.userA.name}${loc} is coming up — see you there!`, { matchId: m.id, screen: "matches" });
   }
 
   // Activity posts whose scheduledAt is in 24h — notify the creator

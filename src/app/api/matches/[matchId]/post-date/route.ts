@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getRequestUserId } from "@/lib/auth/session";
+import { requireAuth } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/client";
 import { triggerUserEvent } from "@/lib/pusher/server";
 import { sendPushToUser } from "@/lib/push/sendPush";
@@ -14,7 +14,9 @@ const schema = z.object({
 });
 
 export async function POST(req: Request, { params }: { params: Promise<{ matchId: string }> }) {
-  const userId = await getRequestUserId(req);
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
+  const userId = auth;
   const { matchId } = await params;
   const body = await req.json();
   const parsed = schema.safeParse(body);
@@ -67,30 +69,40 @@ export async function POST(req: Request, { params }: { params: Promise<{ matchId
       });
 
       const [userA, userB] = await Promise.all([
-        prisma.user.findUnique({ where: { id: match.userAId }, select: { email: true, name: true } }),
-        prisma.user.findUnique({ where: { id: match.userBId }, select: { email: true, name: true } }),
+        prisma.user.findUnique({
+          where: { id: match.userAId },
+          select: { email: true, name: true, profile: { select: { allowShareCard: true } } },
+        }),
+        prisma.user.findUnique({
+          where: { id: match.userBId },
+          select: { email: true, name: true, profile: { select: { allowShareCard: true } } },
+        }),
       ]);
+
+      // Only share email if the user has opted in (defaults to true)
+      const aSharesEmail = userA?.profile?.allowShareCard ?? true;
+      const bSharesEmail = userB?.profile?.allowShareCard ?? true;
 
       // Real-time Pusher + push notification to both users
       await Promise.all([
         triggerUserEvent(match.userAId, "contact-unlocked", {
           matchId,
-          contact: { name: userB?.name, email: userB?.email },
+          contact: { name: userB?.name, email: bSharesEmail ? userB?.email : null },
         }),
         triggerUserEvent(match.userBId, "contact-unlocked", {
           matchId,
-          contact: { name: userA?.name, email: userA?.email },
+          contact: { name: userA?.name, email: aSharesEmail ? userA?.email : null },
         }),
         sendPushToUser(
           match.userAId,
-          `You and ${userB?.name ?? "your date"} both connected! 🎉`,
-          "You can now message freely and share contact details.",
+          `You and ${userB?.name ?? "them"} both connected! 🎉`,
+          bSharesEmail ? "You can now message freely and exchange contact details." : "You can now message freely!",
           { matchId, screen: "matches" }
         ),
         sendPushToUser(
           match.userBId,
-          `You and ${userA?.name ?? "your date"} both connected! 🎉`,
-          "You can now message freely and share contact details.",
+          `You and ${userA?.name ?? "them"} both connected! 🎉`,
+          aSharesEmail ? "You can now message freely and exchange contact details." : "You can now message freely!",
           { matchId, screen: "matches" }
         ),
       ]);

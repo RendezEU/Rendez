@@ -1,16 +1,33 @@
 import { NextResponse } from "next/server";
 import { put } from "@vercel/blob";
 import { prisma } from "@/lib/db/client";
-import { getRequestUserId } from "@/lib/auth/session";
+import { requireAuth } from "@/lib/auth/session";
 
 export async function POST(req: Request) {
-  const userId = await getRequestUserId(req);
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
+  const userId = auth;
 
   const formData = await req.formData();
   const file = formData.get("photo") as File | null;
 
   if (!file) {
     return NextResponse.json({ error: "No photo provided." }, { status: 400 });
+  }
+
+  // Validate MIME type server-side — don't trust the client's Content-Type
+  const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"];
+  if (!ALLOWED_TYPES.includes(file.type)) {
+    return NextResponse.json(
+      { error: "Only JPEG, PNG, WebP, and HEIC images are allowed." },
+      { status: 415 }
+    );
+  }
+
+  // Enforce a 10 MB size limit
+  const MAX_BYTES = 10 * 1024 * 1024;
+  if (file.size > MAX_BYTES) {
+    return NextResponse.json({ error: "Photo must be under 10 MB." }, { status: 413 });
   }
 
   const ext = file.name.split(".").pop() ?? "jpg";

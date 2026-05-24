@@ -67,10 +67,10 @@ async function main() {
       city: "Amsterdam",
       intent: "SERIOUS",
       personalityScore: 5,
-      preferredActivities: ["COFFEE_WALK", "TENNIS", "HIKING"],
+      preferredActivities: ["COFFEE_WALK", "DOG_WALKING", "HIKING"],
       promptAnswers: {
         create: [
-          { promptKey: "perfect_sunday", answer: "Tennis in the morning, slow brunch, long walk somewhere new.", displayOrder: 0 },
+          { promptKey: "perfect_sunday", answer: "Morning dog walk, slow brunch, long walk somewhere new.", displayOrder: 0 },
           { promptKey: "enjoy_meeting", answer: "You appreciate honesty and don't take yourself too seriously.", displayOrder: 1 },
           { promptKey: "hidden_talent", answer: "I can name every country's capital. It comes up more than you'd think.", displayOrder: 2 },
         ],

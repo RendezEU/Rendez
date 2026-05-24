@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { getRequestUserId } from "@/lib/auth/session";
+import { requireAuth } from "@/lib/auth/session";
+
 import { prisma } from "@/lib/db/client";
 
 async function autoTransitionMatches(userId: string) {
@@ -13,8 +14,8 @@ async function autoTransitionMatches(userId: string) {
     },
     data: { status: "DATE_ACTIVE" },
   });
-  // DATE_ACTIVE where scheduled time was 4+ hours ago → COMPLETED
-  const fourHoursAgo = new Date(now.getTime() - 4 * 60 * 60 * 1000);
+  // DATE_ACTIVE where scheduled time was 3+ hours ago → COMPLETED (matches cron job timing)
+  const fourHoursAgo = new Date(now.getTime() - 3 * 60 * 60 * 1000);
   await prisma.match.updateMany({
     where: {
       OR: [{ userAId: userId }, { userBId: userId }],
@@ -35,7 +36,9 @@ async function autoTransitionMatches(userId: string) {
 }
 
 export async function GET(req: Request) {
-  const userId = await getRequestUserId(req);
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
+  const userId = auth;
 
   // Auto-transition statuses based on scheduled time
   await autoTransitionMatches(userId).catch(() => {});

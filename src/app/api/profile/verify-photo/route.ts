@@ -1,12 +1,14 @@
 import { NextResponse } from "next/server";
-import { getRequestUserId } from "@/lib/auth/session";
+import { requireAuth } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/client";
 import Anthropic from "@anthropic-ai/sdk";
 
 const client = new Anthropic();
 
 export async function POST(req: Request) {
-  const userId = await getRequestUserId(req);
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
+  const userId = auth;
 
   const profile = await prisma.profile.findUnique({
     where: { userId },

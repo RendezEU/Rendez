@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
-import { getRequestUserId } from "@/lib/auth/session";
+import { requireAuth } from "@/lib/auth/session";
 
 const ACTIVITY_TAGS: Record<string, string> = {
   RUNNING: '["leisure"="track"]["sport"="running"]',
   COFFEE_WALK: '["amenity"="cafe"]',
   DRINKS: '["amenity"="bar"]',
-  TENNIS: '["leisure"="pitch"]["sport"="tennis"]',
+  DOG_WALKING: '["leisure"="park"]',
   HIKING: '["leisure"="nature_reserve"]',
   CYCLING: '["route"="bicycle"]',
   YOGA: '["sport"="yoga"]',
@@ -29,7 +29,8 @@ interface OverpassElement {
 }
 
 export async function GET(req: Request) {
-  await getRequestUserId(req);
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
   const { searchParams } = new URL(req.url);
   const city = searchParams.get("city") ?? "";
   const activity = searchParams.get("activity") ?? "";

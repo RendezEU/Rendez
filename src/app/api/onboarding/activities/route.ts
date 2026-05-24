@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
-import { getRequestUserId } from "@/lib/auth/session";
+import { requireAuth } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/client";
 import { z } from "zod";
 
-const VALID_ACTIVITIES = ["RUNNING","COFFEE_WALK","DRINKS","TENNIS","HIKING","CYCLING","YOGA","COOKING","MUSEUM","PICNIC","CLIMBING","DANCING"] as const;
+const VALID_ACTIVITIES = ["RUNNING","COFFEE_WALK","DRINKS","DOG_WALKING","HIKING","CYCLING","YOGA","COOKING","MUSEUM","PICNIC","CLIMBING","DANCING"] as const;
 
 const schema = z.object({
   preferredActivities: z.array(z.enum(VALID_ACTIVITIES)).min(2),
@@ -11,7 +11,9 @@ const schema = z.object({
 });
 
 export async function POST(req: Request) {
-  const userId = await getRequestUserId(req);
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
+  const userId = auth;
   const body = await req.json();
   const parsed = schema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: "Invalid." }, { status: 400 });

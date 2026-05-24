@@ -73,7 +73,7 @@ export default async function FeedPage() {
                 <div className="flex-1">
                   <div className="font-semibold text-stone-900">{post.title}</div>
                   <div className="text-sm text-stone-500 mt-0.5">
-                    {formatDate(post.scheduledAt)}
+                    {post.scheduledAt ? formatDate(post.scheduledAt) : "Flexible"}
                     {post.locationName && <> · {post.locationName}</>}
                   </div>
 

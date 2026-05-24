@@ -116,7 +116,7 @@ async function buildTasteProfile(userId: string): Promise<TasteProfile> {
 // ─── Pre-scoring (fast, no Claude) ───────────────────────────────────────────
 //
 // Weights (sum to ~1.0):
-//   Activities    0.30  — shared interests = real-world meetup potential
+//   Activities    0.30  — shared interests = real-world Rendez potential
 //   Intent        0.25  — serious/casual mismatch kills dates before they start
 //   Age           0.12  — proximity matters, but overrideable by taste
 //   Availability  0.10  — soft nudge toward people who can actually meet
@@ -248,7 +248,7 @@ async function scoreWithClaude(
 
   const prompt = `You are the matching AI for Rendez, an activity-based dating app. Your goal is not just to find people who are similar — it is to predict who will actually meet, enjoy the experience, and potentially date.
 
-Optimise for: real-world meetup potential, not just profile similarity.${explorationNote}
+Optimise for: real-world Rendez potential, not just profile similarity.${explorationNote}
 
 ─── PROFILE A: ${a.name} ───
 Age: ${a.age} | Gender: ${a.gender} | City: ${a.city}

@@ -27,7 +27,7 @@ export default async function BillingPage() {
         </div>
         {!isPremium && (
           <div className={`text-sm mt-1 ${isPremium ? "text-brand-200" : "text-stone-500"}`}>
-            {totalCredits} date credits remaining
+            {totalCredits} Rendez credits remaining
           </div>
         )}
         {isPremium && billing?.subscriptionEndsAt && (
@@ -45,10 +45,10 @@ export default async function BillingPage() {
           <div className="bg-white border border-stone-200 rounded-2xl p-5">
             <div className="flex items-start justify-between">
               <div>
-                <div className="font-bold text-stone-900">Single date credit</div>
-                <div className="text-sm text-stone-500 mt-0.5">Confirm one date with a match</div>
+                <div className="font-bold text-stone-900">Single Rendez credit</div>
+                <div className="text-sm text-stone-500 mt-0.5">Confirm one Rendez with a match</div>
                 <ul className="text-xs text-stone-400 mt-2 space-y-0.5">
-                  <li>✓ One confirmed date</li>
+                  <li>✓ One confirmed Rendez</li>
                   <li>✓ No subscription required</li>
                 </ul>
               </div>
@@ -72,9 +72,9 @@ export default async function BillingPage() {
                   <span className="font-bold text-stone-900">Premium</span>
                   <span className="text-xs bg-brand-100 text-brand-700 px-2 py-0.5 rounded-full font-medium">Best value</span>
                 </div>
-                <div className="text-sm text-stone-500 mt-0.5">Unlimited dates + priority matching</div>
+                <div className="text-sm text-stone-500 mt-0.5">Unlimited Rendez + priority matching</div>
                 <ul className="text-xs text-stone-400 mt-2 space-y-0.5">
-                  <li>✓ Unlimited confirmed dates</li>
+                  <li>✓ Unlimited confirmed Rendez</li>
                   <li>✓ Priority AI matching</li>
                   <li>✓ High-reliability match pool</li>
                   <li>✓ Advanced filters</li>

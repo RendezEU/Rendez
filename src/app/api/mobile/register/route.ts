@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db/client";
 import { signMobileToken } from "@/lib/auth/mobile";
+import { generateOtp, sendVerificationEmail } from "@/lib/email";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 
@@ -23,27 +24,40 @@ export async function POST(req: Request) {
   }
 
   const passwordHash = await bcrypt.hash(parsed.data.password, 12);
+  const otp = generateOtp();
+  const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
   const user = await prisma.user.create({
     data: {
       name: parsed.data.name,
       email: parsed.data.email,
       passwordHash,
+      otpCode: otp,
+      otpExpiry,
       billing: { create: { freeCreditsRemaining: 3 } },
     },
   });
 
+  // Fire-and-forget — don't block registration if email fails
+  sendVerificationEmail(parsed.data.email, parsed.data.name, otp).catch((err) =>
+    console.error("Failed to send verification email:", err)
+  );
+
   const token = await signMobileToken(user.id);
 
-  return NextResponse.json({
-    token,
-    user: {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      onboardingComplete: false,
-      tier: "FREE",
-      matchCredits: 3,
+  return NextResponse.json(
+    {
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        onboardingComplete: false,
+        tier: "FREE",
+        matchCredits: 3,
+      },
+      emailVerificationSent: true,
     },
-  }, { status: 201 });
+    { status: 201 }
+  );
 }

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getRequestUserId } from "@/lib/auth/session";
+import { requireAuth } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/client";
 import { triggerUserEvent } from "@/lib/pusher/server";
 import { sendPushToUser } from "@/lib/push/sendPush";
@@ -8,7 +8,9 @@ import { z } from "zod";
 const schema = z.object({ accept: z.boolean() });
 
 export async function POST(req: Request, { params }: { params: Promise<{ matchId: string }> }) {
-  const userId = await getRequestUserId(req);
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
+  const userId = auth;
   const { matchId } = await params;
   const body = await req.json();
   const parsed = schema.safeParse(body);
@@ -39,21 +41,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ matchId
   } else if (aDecided && bDecided && updated.userADecision && updated.userBDecision) {
     await prisma.match.update({ where: { id: matchId }, data: { status: "COORDINATING" } });
 
-    await prisma.billing.updateMany({
-      where: { userId: match.userAId, freeCreditsRemaining: { gt: 0 } },
-      data: { freeCreditsRemaining: { decrement: 1 } },
-    });
-    await prisma.billing.updateMany({
-      where: { userId: match.userBId, freeCreditsRemaining: { gt: 0 } },
-      data: { freeCreditsRemaining: { decrement: 1 } },
-    });
-
     await triggerUserEvent(otherId, "match-accepted", { matchId });
     await triggerUserEvent(userId, "match-accepted", { matchId });
 
-    // Both accepted — notify both
-    await sendPushToUser(otherId, "It's a match! 🎉", "You both said yes. Time to set up your date!", { matchId, screen: "matches" });
-    await sendPushToUser(userId,  "It's a match! 🎉", "You both said yes. Time to set up your date!", { matchId, screen: "matches" });
+    // Both accepted — notify both. Credits are NOT consumed here;
+    // they are consumed at CONFIRM_PLAN when the Rendez is actually locked in.
+    await sendPushToUser(otherId, "It's a Rendez! 🎉", "You're both in — start planning your Rendez!", { matchId, screen: "matches" });
+    await sendPushToUser(userId,  "It's a Rendez! 🎉", "You're both in — start planning your Rendez!", { matchId, screen: "matches" });
   } else {
     await prisma.match.update({ where: { id: matchId }, data: { status: "PENDING_OTHER_DECISION" } });
     // Notify the other person that this user has decided — nudge them to respond

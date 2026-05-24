@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getRequestUserId } from "@/lib/auth/session";
+import { requireAuth } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/client";
 import { z } from "zod";
 
@@ -12,7 +12,9 @@ const slotSchema = z.object({
 const schema = z.object({ slots: z.array(slotSchema).min(1) });
 
 export async function POST(req: Request) {
-  const userId = await getRequestUserId(req);
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
+  const userId = auth;
   const body = await req.json();
   const parsed = schema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: "Invalid." }, { status: 400 });
@@ -36,7 +38,9 @@ export async function POST(req: Request) {
 }
 
 export async function GET(req: Request) {
-  const userId = await getRequestUserId(req);
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
+  const userId = auth;
   const slots = await prisma.availabilitySlot.findMany({
     where: { userId: userId, isActive: true },
   });

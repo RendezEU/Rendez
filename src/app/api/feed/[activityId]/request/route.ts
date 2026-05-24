@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getRequestUserId } from "@/lib/auth/session";
+import { requireAuth } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/client";
 import { sendPushToUser } from "@/lib/push/sendPush";
 import { z } from "zod";
@@ -10,7 +10,9 @@ const FREE_WEEKLY_LIMIT = 3;
 const PREMIUM_WEEKLY_LIMIT = 10;
 
 export async function POST(req: Request, { params }: { params: Promise<{ activityId: string }> }) {
-  const userId = await getRequestUserId(req);
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
+  const userId = auth;
   const { activityId } = await params;
   const body = await req.json();
   const parsed = schema.safeParse(body);

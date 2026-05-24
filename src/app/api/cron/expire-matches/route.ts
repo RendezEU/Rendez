@@ -93,7 +93,11 @@ export async function GET(req: Request) {
       status: "DATE_ACTIVE",
       finalizedPlan: { scheduledAt: { lt: new Date(now.getTime() - 3 * 60 * 60 * 1000) } },
     },
-    include: { finalizedPlan: true },
+    include: {
+      finalizedPlan: true,
+      userA: { select: { name: true } },
+      userB: { select: { name: true } },
+    },
   });
 
   for (const m of toComplete) {
@@ -112,6 +116,35 @@ export async function GET(req: Request) {
     } else {
       await addReputationEvent(m.userBId, "DATE_COMPLETED", m.id);
     }
+
+    // Post-date nudge — prompt both users to rate and add a diary memory
+    await Promise.all([
+      sendPushToUser(
+        m.userAId,
+        `How did it go with ${m.userB.name}? ✨`,
+        "Rate your Rendez and add a memory to your diary.",
+        { screen: "matches", matchId: m.id }
+      ),
+      sendPushToUser(
+        m.userBId,
+        `How did it go with ${m.userA.name}? ✨`,
+        "Rate your Rendez and add a memory to your diary.",
+        { screen: "matches", matchId: m.id }
+      ),
+    ]);
+  }
+
+  // ── 5. Refresh recurring activity posts (keep them live indefinitely) ──────
+  const recurringPosts = await prisma.activityPost.findMany({
+    where: { isRecurring: true, isActive: true },
+    select: { id: true },
+  });
+
+  if (recurringPosts.length > 0) {
+    await prisma.activityPost.updateMany({
+      where: { id: { in: recurringPosts.map((p) => p.id) } },
+      data: { expiresAt: new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000) },
+    });
   }
 
   return NextResponse.json({
@@ -119,5 +152,6 @@ export async function GET(req: Request) {
     expiredInterests: staleRequests.length,
     activated: toActivate.length,
     completed: toComplete.length,
+    recurringRefreshed: recurringPosts.length,
   });
 }

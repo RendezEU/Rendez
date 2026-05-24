@@ -35,7 +35,7 @@ export default function RegisterPage() {
   return (
     <>
       <h1 className="text-xl font-bold text-stone-900 mb-1">Create your account</h1>
-      <p className="text-sm text-stone-500 mb-6">First 3 dates are on us.</p>
+      <p className="text-sm text-stone-500 mb-6">First 3 Rendez are on us.</p>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>

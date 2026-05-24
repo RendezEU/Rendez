@@ -1,9 +1,12 @@
 import { NextResponse } from "next/server";
-import { getRequestUserId } from "@/lib/auth/session";
+import { requireAuth } from "@/lib/auth/session";
+
 import { prisma } from "@/lib/db/client";
 
 export async function GET(req: Request) {
-  const userId = await getRequestUserId(req);
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
+  const userId = auth;
 
   const requests = await prisma.feedMatchRequest.findMany({
     where: {

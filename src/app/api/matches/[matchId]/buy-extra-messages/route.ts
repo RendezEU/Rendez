@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
-import { getRequestUserId } from "@/lib/auth/session";
+import { requireAuth } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/client";
 import { stripe } from "@/lib/stripe/client";
 
 export async function POST(req: Request, { params }: { params: Promise<{ matchId: string }> }) {
-  const userId = await getRequestUserId(req);
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
+  const userId = auth;
   const { matchId } = await params;
 
   const match = await prisma.match.findUnique({ where: { id: matchId } });

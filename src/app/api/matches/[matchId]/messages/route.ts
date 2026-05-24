@@ -1,17 +1,20 @@
 import { NextResponse } from "next/server";
-import { getRequestUserId } from "@/lib/auth/session";
+import { requireAuth } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/client";
 import { triggerMatchEvent } from "@/lib/pusher/server";
 import { sendPushToUser } from "@/lib/push/sendPush";
 import { z } from "zod";
+import { moderateText } from "@/lib/content-filter";
 
-const BASE_LIMIT = 6;
-const EXTRA_LIMIT = 6; // purchased add-on
+const BASE_LIMIT = 10;
+const EXTRA_LIMIT = 10; // purchased add-on
 
 const schema = z.object({ content: z.string().min(1).max(500) });
 
 export async function GET(req: Request, { params }: { params: Promise<{ matchId: string }> }) {
-  const userId = await getRequestUserId(req);
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
+  const userId = auth;
   const { matchId } = await params;
 
   const match = await prisma.match.findUnique({ where: { id: matchId } });
@@ -30,11 +33,18 @@ export async function GET(req: Request, { params }: { params: Promise<{ matchId:
 }
 
 export async function POST(req: Request, { params }: { params: Promise<{ matchId: string }> }) {
-  const userId = await getRequestUserId(req);
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
+  const userId = auth;
   const { matchId } = await params;
   const body = await req.json();
   const parsed = schema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: "Invalid." }, { status: 400 });
+
+  const moderation = moderateText(parsed.data.content);
+  if (!moderation.ok) {
+    return NextResponse.json({ error: moderation.reason }, { status: 422 });
+  }
 
   const match = await prisma.match.findUnique({ where: { id: matchId } });
   if (!match) return NextResponse.json({ error: "Not found." }, { status: 404 });

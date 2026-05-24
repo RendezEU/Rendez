@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getRequestUserId } from "@/lib/auth/session";
+import { requireAuth } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/client";
 import { triggerMatchEvent } from "@/lib/pusher/server";
 import { addReputationEvent } from "@/lib/reputation/calculator";
@@ -7,13 +7,15 @@ import { sendPushToUser } from "@/lib/push/sendPush";
 import { z } from "zod";
 
 const schema = z.object({
-  actionType: z.enum(["PROPOSE_TIME","ACCEPT_TIME","PROPOSE_LOCATION","ACCEPT_LOCATION","CONFIRM_PLAN","RUNNING_LATE","ARRIVED","CANCEL","RETRACT_PROPOSAL","RESCHEDULE"]),
+  actionType: z.enum(["PROPOSE_TIME","ACCEPT_TIME","PROPOSE_LOCATION","ACCEPT_LOCATION","CONFIRM_PLAN","RUNNING_LATE","ARRIVED","CANCEL","RETRACT_PROPOSAL","RESCHEDULE","ICEBREAKER_ANSWER"]),
   payload: z.record(z.unknown()).default({}),
-  targetActionId: z.string().optional(), // for ACCEPT_TIME / ACCEPT_LOCATION
+  targetActionId: z.string().optional(),
 });
 
 export async function POST(req: Request, { params }: { params: Promise<{ matchId: string }> }) {
-  const userId = await getRequestUserId(req);
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
+  const userId = auth;
   const { matchId } = await params;
   const body = await req.json();
   const parsed = schema.safeParse(body);
@@ -57,6 +59,27 @@ export async function POST(req: Request, { params }: { params: Promise<{ matchId
 
   // Handle CONFIRM_PLAN → create FinalizedPlan
   if (actionType === "CONFIRM_PLAN") {
+    // ── Credit gate ───────────────────────────────────────────────────────────
+    // One credit is consumed per confirmed Rendez. Premium users are unlimited.
+    const billing = await prisma.billing.findUnique({ where: { userId } });
+    const isPremium = billing?.tier === "PREMIUM";
+    if (!isPremium) {
+      const freeLeft = billing?.freeCreditsRemaining ?? 0;
+      const paidLeft = billing?.purchasedCredits ?? 0;
+      if (freeLeft + paidLeft <= 0) {
+        return NextResponse.json(
+          { error: "NO_CREDITS", message: "You need a Rendez credit to confirm a plan." },
+          { status: 402 }
+        );
+      }
+      // Spend free credits first, then purchased
+      if (freeLeft > 0) {
+        await prisma.billing.update({ where: { userId }, data: { freeCreditsRemaining: { decrement: 1 } } });
+      } else {
+        await prisma.billing.update({ where: { userId }, data: { purchasedCredits: { decrement: 1 } } });
+      }
+    }
+    // ─────────────────────────────────────────────────────────────────────────
     const actions = await prisma.systemAction.findMany({ where: { matchId } });
     // Accepting a proposal sets acceptedAt on the original PROPOSE_TIME / PROPOSE_LOCATION record
     const acceptedTime = actions.find(
@@ -66,15 +89,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ matchId
       (a) => a.actionType === "PROPOSE_LOCATION" && a.acceptedAt
     );
 
-    if (!acceptedTime || !acceptedLoc) {
+    if (!acceptedTime) {
       return NextResponse.json(
-        { error: "Both time and location must be agreed upon first." },
+        { error: "A time must be agreed upon first." },
         { status: 400 }
       );
     }
 
     const timePayload = acceptedTime.payload as { proposedDatetime?: string };
-    const locPayload = acceptedLoc.payload as { locationName?: string; locationUrl?: string };
+    const locPayload = (acceptedLoc?.payload ?? {}) as { locationName?: string; locationUrl?: string };
 
     const scheduledAt = timePayload.proposedDatetime
       ? new Date(timePayload.proposedDatetime)
@@ -160,6 +183,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ matchId
         data: { blockedUntil: null },
       });
     }
+    // Notify the other person so they're not left wondering
+    await sendPushToUser(
+      recipientId,
+      `${await senderName()} cancelled the Rendez 😔`,
+      "They had to cancel — head to the feed to find a new match!",
+      { screen: "matches" }
+    );
     return NextResponse.json({ ok: true });
   }
 
@@ -213,6 +243,39 @@ export async function POST(req: Request, { params }: { params: Promise<{ matchId
       { matchId, screen: "matches" }
     );
     return NextResponse.json(updated);
+  }
+
+  // Icebreaker answer — store and notify the question asker
+  if (actionType === "ICEBREAKER_ANSWER") {
+    const { questionActionId, answer } = payload as { questionActionId?: string; answer?: string };
+    if (!questionActionId || !answer) {
+      return NextResponse.json({ error: "questionActionId and answer required." }, { status: 400 });
+    }
+    // Verify the question exists in this match and belongs to the other user
+    const question = await prisma.systemAction.findFirst({
+      where: { id: questionActionId, matchId, actionType: "ICEBREAKER_QUESTION" },
+    });
+    if (!question) return NextResponse.json({ error: "Question not found." }, { status: 404 });
+    if (question.initiatorId === userId) {
+      return NextResponse.json({ error: "Cannot answer your own question." }, { status: 400 });
+    }
+    // 1 answer per question per user
+    const alreadyAnswered = await prisma.systemAction.findFirst({
+      where: { matchId, initiatorId: userId, actionType: "ICEBREAKER_ANSWER" },
+    });
+    if (alreadyAnswered) return NextResponse.json({ error: "Already answered." }, { status: 409 });
+
+    const answerAction = await prisma.systemAction.create({
+      data: { matchId, initiatorId: userId, actionType: "ICEBREAKER_ANSWER", payload: { questionActionId, answer } },
+    });
+    await triggerMatchEvent(matchId, "system-action", answerAction);
+    await sendPushToUser(
+      question.initiatorId,
+      `${await senderName()} answered your ice breaker 🧊`,
+      answer,
+      { matchId, screen: "matches" }
+    );
+    return NextResponse.json(answerAction, { status: 201 });
   }
 
   // Propose actions — notify the other user
