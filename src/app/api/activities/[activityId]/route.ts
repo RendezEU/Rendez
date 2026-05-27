@@ -53,6 +53,7 @@ export async function GET(
     isSpontaneous: post.isSpontaneous,
     isFlexible: post.isFlexible,
     isRecurring: post.isRecurring,
+    isRendezEvent: post.isRendezEvent,
     recurringDayOfWeek: post.recurringDayOfWeek,
     maxParticipants: post.maxParticipants,
     createdAt: post.createdAt,

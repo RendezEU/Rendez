@@ -12,6 +12,10 @@
     {
       "path": "/api/cron/activity-reminders",
       "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/rendez-event",
+      "schedule": "0 8 * * 1"
     }
   ]
 }

@@ -112,7 +112,7 @@ export async function GET(req: Request) {
         userId: { not: userId, notIn: hiddenUserIds.length > 0 ? hiddenUserIds : undefined },
         ...(cityParam ? { city: { contains: cityParam, mode: "insensitive" } } : {}),
       },
-      orderBy: [{ isFlexible: "asc" }, { scheduledAt: "asc" }],
+      orderBy: [{ isRendezEvent: "desc" }, { isFlexible: "asc" }, { scheduledAt: "asc" }],
       take: 30,
       include: {
         user: {
@@ -153,6 +153,7 @@ export async function GET(req: Request) {
       isSpontaneous: p.isSpontaneous,
       isFlexible: p.isFlexible,
       isRecurring: p.isRecurring,
+      isRendezEvent: p.isRendezEvent,
       recurringDayOfWeek: p.recurringDayOfWeek,
       maxParticipants: p.maxParticipants,
       activityIntent: p.activityIntent,

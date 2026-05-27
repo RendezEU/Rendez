@@ -338,6 +338,7 @@ model ActivityPost {
   city             String
   activityIntent   ActivityIntentType @default(OPEN)
   isActive         Boolean          @default(true)
+  isRendezEvent    Boolean          @default(false)
   isSpontaneous      Boolean          @default(false)
   isFlexible         Boolean          @default(false)
   isRecurring        Boolean          @default(false)
