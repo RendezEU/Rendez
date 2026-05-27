@@ -85,25 +85,17 @@ async function getBotUserId(): Promise<string> {
   });
   if (existing) return existing.id;
 
-  // Create bot user for the first time
+  // Create a minimal bot user — no profile needed because the feed detail page
+  // shows special Rendez branding for isRendezEvent posts instead of a real profile.
   const created = await prisma.user.create({
     data: {
       email: BOT_EMAIL,
       name: "Rendez",
-      passwordHash: "", // no login — bot account
+      passwordHash: "", // no login — bot account only
       emailVerified: new Date(),
-      tier: "PREMIUM",
+      onboardingComplete: true,
     },
     select: { id: true },
-  });
-
-  // Give it a minimal profile so it doesn't break any profile lookups
-  await prisma.userProfile.create({
-    data: {
-      userId: created.id,
-      bio: "Rendez organises weekly community events in Cork 🪷",
-      city: "Cork",
-    },
   });
 
   return created.id;
