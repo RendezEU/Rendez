@@ -48,9 +48,14 @@ export async function checkRateLimit(
   windowMs: number
 ): Promise<boolean> {
   if (hasUpstash) {
-    const limiter = getUpstashLimiter(limit, Math.round(windowMs / 1000));
-    const { success } = await limiter.limit(key);
-    return success;
+    try {
+      const limiter = getUpstashLimiter(limit, Math.round(windowMs / 1000));
+      const { success } = await limiter.limit(key);
+      return success;
+    } catch {
+      // Upstash unavailable — fail open so login/register still work
+      return true;
+    }
   }
 
   // In-memory fallback
