@@ -15,6 +15,7 @@ const RESET_WINDOW_MS = 15 * 60 * 1000;
  * Always returns 200 — never confirms whether the email exists (anti-enumeration).
  */
 export async function POST(req: Request) {
+  try {
   const ip =
     req.headers.get("x-forwarded-for")?.split(",")[0].trim() ??
     req.headers.get("x-real-ip") ??
@@ -51,4 +52,8 @@ export async function POST(req: Request) {
 
   // Always return the same response
   return NextResponse.json({ ok: true });
+  } catch (err) {
+    console.error("[forgot-password]", err);
+    return NextResponse.json({ ok: true }); // never reveal errors on this endpoint
+  }
 }

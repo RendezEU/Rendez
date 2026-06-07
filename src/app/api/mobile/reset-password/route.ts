@@ -15,6 +15,7 @@ const schema = z.object({
  * Also marks the email as verified if it wasn't already.
  */
 export async function POST(req: Request) {
+  try {
   const body = await req.json();
   const parsed = schema.safeParse(body);
   if (!parsed.success) {
@@ -50,4 +51,8 @@ export async function POST(req: Request) {
   });
 
   return NextResponse.json({ ok: true });
+  } catch (err) {
+    console.error("[reset-password]", err);
+    return NextResponse.json({ error: "Password reset failed. Please try again." }, { status: 500 });
+  }
 }

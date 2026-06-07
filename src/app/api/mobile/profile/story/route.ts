@@ -18,25 +18,30 @@ const answerSchema = z.object({
 const schema = z.object({ answers: z.array(answerSchema).min(1) });
 
 export async function POST(req: Request) {
-  const token = extractBearerToken(req);
-  if (!token) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
-  const userId = await verifyMobileToken(token);
-  if (!userId) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  try {
+    const token = extractBearerToken(req);
+    if (!token) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    const userId = await verifyMobileToken(token);
+    if (!userId) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
 
-  const body = await req.json();
-  const parsed = schema.safeParse(body);
-  if (!parsed.success) return NextResponse.json({ error: "Add at least one prompt answer." }, { status: 400 });
+    const body = await req.json();
+    const parsed = schema.safeParse(body);
+    if (!parsed.success) return NextResponse.json({ error: "Add at least one prompt answer." }, { status: 400 });
 
-  const profile = await prisma.profile.findUnique({ where: { userId } });
-  if (!profile) return NextResponse.json({ error: "Profile not found." }, { status: 404 });
+    const profile = await prisma.profile.findUnique({ where: { userId } });
+    if (!profile) return NextResponse.json({ error: "Profile not found." }, { status: 404 });
 
-  for (const a of parsed.data.answers) {
-    await prisma.promptAnswer.upsert({
-      where: { profileId_promptKey: { profileId: profile.id, promptKey: a.promptKey } },
-      create: { profileId: profile.id, promptKey: a.promptKey, answer: a.answer, displayOrder: a.displayOrder },
-      update: { answer: a.answer, displayOrder: a.displayOrder },
-    });
+    for (const a of parsed.data.answers) {
+      await prisma.promptAnswer.upsert({
+        where: { profileId_promptKey: { profileId: profile.id, promptKey: a.promptKey } },
+        create: { profileId: profile.id, promptKey: a.promptKey, answer: a.answer, displayOrder: a.displayOrder },
+        update: { answer: a.answer, displayOrder: a.displayOrder },
+      });
+    }
+
+    return NextResponse.json({ ok: true });
+  } catch (err) {
+    console.error("[profile/story]", err);
+    return NextResponse.json({ error: "Failed to save story. Please try again." }, { status: 500 });
   }
-
-  return NextResponse.json({ ok: true });
 }
