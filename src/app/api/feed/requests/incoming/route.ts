@@ -14,7 +14,7 @@ export async function GET(req: Request) {
       activityPost: { userId },
     },
     include: {
-      activityPost: { select: { id: true, activityCategory: true, title: true, activityIntent: true } },
+      activityPost: { select: { id: true, activityCategory: true, title: true, activityIntent: true, maxParticipants: true, locationName: true, scheduledAt: true } },
       requester: {
         select: {
           id: true,
