@@ -2,7 +2,7 @@ import { SignJWT, jwtVerify } from "jose";
 
 const secret = new TextEncoder().encode(process.env.NEXTAUTH_SECRET!);
 const ALG = "HS256";
-const EXPIRY = "30d";
+const EXPIRY = "90d";
 
 export async function signMobileToken(userId: string): Promise<string> {
   return new SignJWT({ sub: userId })
