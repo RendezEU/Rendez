@@ -40,12 +40,14 @@ enum ActivityCategory {
   HIKING
   CYCLING
   YOGA
-  COOKING
+  DINNER
   MUSEUM
   PICNIC
   CLIMBING
   DANCING
-  TENNIS
+  BRUNCH
+  LIVE_MUSIC
+  LANGUAGE_EXCHANGE
 }
 
 enum TimeBlock {
@@ -136,6 +138,7 @@ model User {
   reputationEvents  ReputationEvent[]
   billing           Billing?
   pushTokens        PushToken[]
+  eventMessages     EventMessage[]      @relation("EventMessageSender")
   blocksGiven       Block[]             @relation("BlocksGiven")
   blocksReceived    Block[]             @relation("BlocksReceived")
   reportsGiven      Report[]            @relation("ReportsGiven")
@@ -344,10 +347,18 @@ model ActivityPost {
   isRecurring        Boolean          @default(false)
   recurringDayOfWeek String?
   maxParticipants    Int              @default(1)
+  // Gender-restricted events: null = open to all, MALE = men only, FEMALE = women only
+  genderRestriction  Gender?
+  // Couples events: participants join as a couple (+1 partner doesn't need an account)
+  isCouplesEvent     Boolean          @default(false)
   matchRequests    FeedMatchRequest[]
+  eventMessages    EventMessage[]
   reports          Report[]
   createdAt        DateTime         @default(now())
   expiresAt        DateTime
+  // Early access: Rendez events are visible to Premium users from Saturday,
+  // free users from Monday. null = no restriction (community posts, legacy events).
+  freeAccessAt     DateTime?
 
   @@index([city, activityCategory, isActive])
   @@index([userId])
@@ -362,10 +373,17 @@ model FeedMatchRequest {
   matchId        String?
   status         String       @default("PENDING")
   message        String?      @db.Text
+  // Couples events: requester is bringing a +1 partner (partner doesn't need an account)
+  hasPlusOne     Boolean      @default(false)
+  // Waitlist: set when event is full at time of request
+  isWaitlist     Boolean      @default(false)
+  // Priority: true when requester was a Premium member at time of joining waitlist
+  isPriority     Boolean      @default(false)
   createdAt      DateTime     @default(now())
 
   @@unique([activityPostId, requesterId])
   @@index([requesterId])
+  @@index([activityPostId, isWaitlist, isPriority, createdAt])
 }
 
 // ─── POST-DATE ────────────────────────────────────────────────────────────────
@@ -502,4 +520,17 @@ model Report {
   @@index([reporterId])
   @@index([reportedUserId])
   @@index([reportedPostId])
+}
+
+model EventMessage {
+  id             String       @id @default(cuid())
+  activityPostId String
+  activityPost   ActivityPost @relation(fields: [activityPostId], references: [id], onDelete: Cascade)
+  senderId       String
+  sender         User         @relation("EventMessageSender", fields: [senderId], references: [id])
+  content        String       @db.Text
+  createdAt      DateTime     @default(now())
+
+  @@index([activityPostId, createdAt])
+  @@index([senderId])
 }
