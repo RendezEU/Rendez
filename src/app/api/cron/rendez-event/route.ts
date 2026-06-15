@@ -473,7 +473,7 @@ const EVENT_SLOTS: Array<{
 
   // ── Upscale social events ──────────────────────────────────────────────────
   {
-    category:  "COFFEE_WALK",
+    category:  "DRINKS",
     intent:    "OPEN",
     dayOffset: 5, hour: 14, durationHours: 2, // Saturday 15:00 Irish time
     maxParticipants: 10,

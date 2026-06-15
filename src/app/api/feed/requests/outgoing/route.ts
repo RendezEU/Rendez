@@ -11,6 +11,8 @@ export async function GET(req: Request) {
     where: {
       requesterId: userId,
       status: { in: ["PENDING", "ACCEPTED"] },
+      // Rendez event joins are confirmed automatically — they live on the Home tab, not here
+      activityPost: { isRendezEvent: false },
     },
     include: {
       activityPost: {
