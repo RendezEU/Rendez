@@ -99,6 +99,22 @@ const VENUES_BY_CATEGORY: Record<string, string[]> = {
     "River Lee Hotel, Cork",
     "Izz Café, Georges Quay, Cork",
   ],
+  NETWORKING: [
+    "Cask, MacCurtain Street, Cork",
+    "Monk Cocktail Bar, North Mall, Cork",
+    "Electric Bar & Restaurant, South Mall, Cork",
+    "Dwyers of Cork, Washington Street, Cork",
+    "Bierhaus, Popes Quay, Cork",
+    "Impala, Liberty Street, Cork",
+    "The Woodford, Cork",
+    "Market Lane, Oliver Plunkett Street, Cork",
+    "SpitJack, Washington Street, Cork",
+    "River Lee Hotel, Cork",
+    "Sophie's Rooftop, The Dean Cork, Horgan's Quay",
+    "The Oliver Plunkett, Oliver Plunkett Street, Cork",
+    "Goldbergs, Victoria Road, Cork",
+    "Sober Lane, Sullivan's Quay, Cork",
+  ],
   DOG_WALKING: [
     "Fitzgerald's Park, Cork",
     "Lee Fields, Cork",
@@ -447,7 +463,7 @@ const EVENT_SLOTS: Array<{
 
   // ── Networking / young professionals ──────────────────────────────────────
   {
-    category:  "DRINKS",
+    category:  "NETWORKING",
     intent:    "NETWORKING",
     dayOffset: 2, hour: 18, durationHours: 2, // Wednesday 19:00 Irish time
     maxParticipants: 16,

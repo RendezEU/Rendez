@@ -48,6 +48,7 @@ enum ActivityCategory {
   BRUNCH
   LIVE_MUSIC
   LANGUAGE_EXCHANGE
+  NETWORKING
 }
 
 enum TimeBlock {
