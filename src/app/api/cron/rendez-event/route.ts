@@ -445,6 +445,16 @@ const EVENT_SLOTS: Array<{
     themeHint: "Friday night social drinks — kick off the weekend, meet new people, no cliques, easy vibes",
   },
 
+  // ── Networking / young professionals ──────────────────────────────────────
+  {
+    category:  "DRINKS",
+    intent:    "NETWORKING",
+    dayOffset: 2, hour: 18, durationHours: 2, // Wednesday 19:00 Irish time
+    maxParticipants: 16,
+    // Year-round — indoor, classic midweek after-work networking slot
+    themeHint: "Young professionals midweek drinks — share experiences, swap ideas, grow your Cork network in a relaxed setting. No pitch decks, just good conversation.",
+  },
+
   // ── Upscale social events ──────────────────────────────────────────────────
   {
     category:  "COFFEE_WALK",
