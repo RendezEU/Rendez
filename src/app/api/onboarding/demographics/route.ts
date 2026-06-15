@@ -7,7 +7,7 @@ import { z } from "zod";
 const schema = z.object({
   birthDate: z.string(),
   gender: z.enum(["MALE", "FEMALE", "NON_BINARY", "OTHER", "PREFER_NOT_TO_SAY"]),
-  genderPreferences: z.array(z.enum(["MALE", "FEMALE", "NON_BINARY", "OTHER", "PREFER_NOT_TO_SAY"])).min(1),
+  genderPreferences: z.array(z.enum(["MALE", "FEMALE", "NON_BINARY", "OTHER", "PREFER_NOT_TO_SAY", "FRIENDS"])).min(1).transform((prefs) => prefs),
   city: z.string().min(1),
   maxDistanceKm: z.number().min(1).max(500).default(25),
 });
@@ -22,6 +22,18 @@ export async function POST(req: Request) {
 
   const { birthDate, gender, genderPreferences, city, maxDistanceKm } = parsed.data;
 
+  // "FRIENDS" is a UI-only option — strip it before saving to the Gender enum column
+  // and capture it as an intent flag instead
+  const wantsFriends = genderPreferences.includes("FRIENDS");
+  const cleanedGenderPrefs = genderPreferences.filter((g) => g !== "FRIENDS") as
+    ("MALE" | "FEMALE" | "NON_BINARY" | "OTHER" | "PREFER_NOT_TO_SAY")[];
+  // If they only selected Friends with no gender prefs, default to all genders
+  const finalGenderPrefs: ("MALE" | "FEMALE" | "NON_BINARY" | "OTHER" | "PREFER_NOT_TO_SAY")[] =
+    cleanedGenderPrefs.length > 0
+      ? cleanedGenderPrefs
+      : ["MALE", "FEMALE", "NON_BINARY", "OTHER"];
+  const derivedIntent = wantsFriends ? "FRIENDSHIP" : "OPEN";
+
   const coords = await geocodeCity(city);
 
   await prisma.profile.upsert({
@@ -30,10 +42,10 @@ export async function POST(req: Request) {
       userId: userId,
       birthDate: new Date(birthDate),
       gender,
-      genderPreferences,
+      genderPreferences: finalGenderPrefs,
       city,
       maxDistanceKm,
-      intent: "OPEN",
+      intent: derivedIntent,
       personalityScore: 5,
       latitude: coords?.lat ?? null,
       longitude: coords?.lng ?? null,
@@ -41,9 +53,10 @@ export async function POST(req: Request) {
     update: {
       birthDate: new Date(birthDate),
       gender,
-      genderPreferences,
+      genderPreferences: finalGenderPrefs,
       city,
       maxDistanceKm,
+      intent: derivedIntent,
       ...(coords ? { latitude: coords.lat, longitude: coords.lng } : {}),
     },
   });

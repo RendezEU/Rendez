@@ -55,5 +55,40 @@ export async function POST(req: Request) {
     return NextResponse.redirect(checkoutSession.url!);
   }
 
+  if (type === "tip") {
+    const rawAmount = formData.get("amount");
+    const amountEuros = Number(rawAmount);
+    const validAmounts = [1, 2, 5];
+    if (!validAmounts.includes(amountEuros)) {
+      return NextResponse.json({ error: "Invalid tip amount." }, { status: 400 });
+    }
+    const checkoutSession = await stripe.checkout.sessions.create({
+      customer: customerId,
+      mode: "payment",
+      submit_type: "donate",
+      line_items: [
+        {
+          quantity: 1,
+          price_data: {
+            currency: "eur",
+            unit_amount: amountEuros * 100, // cents
+            product_data: {
+              name: "Support Rendez",
+              description: "Optional contribution — keeps Rendez free and community-run.",
+            },
+          },
+        },
+      ],
+      success_url: `${appUrl}/?tip=thank-you`,
+      cancel_url: `${appUrl}/`,
+      metadata: {
+        userId: session.user?.id as string,
+        type: "tip",
+        amount: String(amountEuros * 100),
+      },
+    });
+    return NextResponse.json({ url: checkoutSession.url });
+  }
+
   return NextResponse.json({ error: "Invalid type." }, { status: 400 });
 }

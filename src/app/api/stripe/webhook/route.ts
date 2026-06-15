@@ -48,6 +48,21 @@ export async function POST(req: Request) {
         }
       }
 
+      if (type === "tip") {
+        const billing = await prisma.billing.findUnique({ where: { userId } });
+        if (billing) {
+          await prisma.billingEvent.create({
+            data: {
+              billingId: billing.id,
+              eventType: "TIP_RECEIVED",
+              stripeEventId: event.id,
+              amount: session.amount_total ?? 0,
+              currency: session.currency ?? "eur",
+            },
+          });
+        }
+      }
+
       if (type === "subscription" && session.subscription) {
         await prisma.billing.updateMany({
           where: { userId },

@@ -3,7 +3,7 @@ import { requireAuth } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/client";
 import { z } from "zod";
 
-const VALID_ACTIVITIES = ["RUNNING","COFFEE_WALK","DRINKS","DOG_WALKING","HIKING","CYCLING","YOGA","COOKING","MUSEUM","PICNIC","CLIMBING","DANCING"] as const;
+const VALID_ACTIVITIES = ["RUNNING","COFFEE_WALK","DRINKS","DOG_WALKING","HIKING","CYCLING","YOGA","DINNER","MUSEUM","PICNIC","DANCING","BRUNCH","LANGUAGE_EXCHANGE"] as const;
 
 const schema = z.object({
   preferredActivities: z.array(z.enum(VALID_ACTIVITIES)).min(2),

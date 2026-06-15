@@ -9,11 +9,12 @@ const ACTIVITY_TAGS: Record<string, string> = {
   HIKING: '["leisure"="nature_reserve"]',
   CYCLING: '["route"="bicycle"]',
   YOGA: '["sport"="yoga"]',
-  COOKING: '["amenity"="restaurant"]["cuisine"="cooking_school"]',
+  DINNER: '["amenity"="restaurant"]',
   MUSEUM: '["tourism"="museum"]',
   PICNIC: '["leisure"="park"]',
-  CLIMBING: '["sport"="climbing"]',
   DANCING: '["amenity"="nightclub"]',
+  BRUNCH: '["amenity"="cafe"]',
+  LANGUAGE_EXCHANGE: '["amenity"="cafe"]',
 };
 
 interface NominatimResult {

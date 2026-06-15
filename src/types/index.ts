@@ -1,33 +1,35 @@
 export type { Gender, IntentType, ActivityCategory, TimeBlock, DayOfWeek, MatchStatus, MatchSource, SystemActionType, PostDateChoice, UserTier } from "@prisma/client";
 
 export const ACTIVITY_LABELS: Record<string, string> = {
-  RUNNING: "Running",
   COFFEE_WALK: "Coffee / Walk",
   DRINKS: "Drinks",
+  RUNNING: "Running",
+  DINNER: "Dinner",
+  BRUNCH: "Brunch",
   DOG_WALKING: "Dog Walk",
   HIKING: "Hiking",
+  DANCING: "Dancing",
   CYCLING: "Cycling",
   YOGA: "Yoga",
-  COOKING: "Cooking",
-  MUSEUM: "Museum",
   PICNIC: "Picnic",
-  CLIMBING: "Climbing",
-  DANCING: "Dancing",
+  MUSEUM: "Museum",
+  LANGUAGE_EXCHANGE: "Language Exchange",
 };
 
 export const ACTIVITY_EMOJIS: Record<string, string> = {
-  RUNNING: "🏃",
   COFFEE_WALK: "☕",
   DRINKS: "🍸",
+  RUNNING: "🏃",
+  DINNER: "🍽️",
+  BRUNCH: "🥐",
   DOG_WALKING: "🐕",
   HIKING: "🥾",
+  DANCING: "💃",
   CYCLING: "🚴",
   YOGA: "🧘",
-  COOKING: "👨‍🍳",
-  MUSEUM: "🏛️",
   PICNIC: "🧺",
-  CLIMBING: "🧗",
-  DANCING: "💃",
+  MUSEUM: "🏛️",
+  LANGUAGE_EXCHANGE: "🗣️",
 };
 
 export const PROFILE_PROMPTS: { key: string; question: string }[] = [
