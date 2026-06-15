@@ -435,6 +435,16 @@ const EVENT_SLOTS: Array<{
     ],
   },
 
+  // ── Extra mixed drinks slot (Friday) — most popular night, guaranteed 3 mixed drinks/week ──
+  {
+    category:  "DRINKS",
+    intent:    "FRIENDS",
+    dayOffset: 4, hour: 19, durationHours: 2.5, // Friday 20:00 Irish time
+    maxParticipants: 14,
+    // Year-round — indoor, Friday is the busiest night
+    themeHint: "Friday night social drinks — kick off the weekend, meet new people, no cliques, easy vibes",
+  },
+
   // ── Upscale social events ──────────────────────────────────────────────────
   {
     category:  "COFFEE_WALK",
