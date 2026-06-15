@@ -19,7 +19,7 @@ export async function GET(req: Request) {
           id: true, activityCategory: true, title: true, description: true,
           activityIntent: true, maxParticipants: true, locationName: true,
           scheduledAt: true, isRecurring: true, recurringDayOfWeek: true,
-          isFlexible: true, isSpontaneous: true,
+          isFlexible: true, isSpontaneous: true, isRendezEvent: true,
         },
       },
       requester: {
