@@ -10,7 +10,6 @@ const schema = z.object({
 });
 
 const FREE_WEEKLY_LIMIT = 3;
-const PREMIUM_WEEKLY_LIMIT = 10;
 
 // ─── POST: join event or join waitlist if full ────────────────────────────────
 export async function POST(req: Request, { params }: { params: Promise<{ activityId: string }> }) {
@@ -76,13 +75,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ activit
     }
   }
 
-  // ── Weekly request limit (only counts confirmed joins, not waitlist entries) ─
+  // ── Weekly request limit (premium = unlimited) ────────────────────────────
   const weekStart = new Date();
   weekStart.setDate(weekStart.getDate() - weekStart.getDay());
   weekStart.setHours(0, 0, 0, 0);
 
-  const limit = isPremium ? PREMIUM_WEEKLY_LIMIT : FREE_WEEKLY_LIMIT;
-  const weeklyCount = await prisma.feedMatchRequest.count({
+  const weeklyCount = isPremium ? 0 : await prisma.feedMatchRequest.count({
     where: { requesterId: userId, isWaitlist: false, createdAt: { gte: weekStart } },
   });
 
@@ -125,8 +123,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ activit
     return NextResponse.json({ ...request, isWaitlist: true }, { status: 201 });
   }
 
-  // ── Confirmed join — check weekly limit ────────────────────────────────────
-  if (weeklyCount >= limit) {
+  // ── Confirmed join — check weekly limit (free users only) ────────────────
+  if (!isPremium && weeklyCount >= FREE_WEEKLY_LIMIT) {
     return NextResponse.json({ error: "Weekly request limit reached." }, { status: 429 });
   }
 
