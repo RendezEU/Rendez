@@ -10,7 +10,7 @@ export async function GET(req: Request) {
   const requests = await prisma.feedMatchRequest.findMany({
     where: {
       requesterId: userId,
-      status: { in: ["PENDING", "ACCEPTED"] },
+      status: { in: ["PENDING", "ACCEPTED", "DECLINED"] },
       // Rendez event joins are confirmed automatically — they live on the Home tab, not here
       activityPost: { isRendezEvent: false },
     },
