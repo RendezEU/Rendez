@@ -27,6 +27,7 @@ export async function GET(req: Request) {
           recurringDayOfWeek: true,
           isFlexible: true,
           isSpontaneous: true,
+          isRendezEvent: true,
           userId: true,
           user: {
             select: {
@@ -66,6 +67,7 @@ export async function GET(req: Request) {
         recurringDayOfWeek: r.activityPost.recurringDayOfWeek,
         isFlexible: r.activityPost.isFlexible,
         isSpontaneous: r.activityPost.isSpontaneous,
+        isRendezEvent: r.activityPost.isRendezEvent,
       },
       host: {
         id: r.activityPost.user.id,
