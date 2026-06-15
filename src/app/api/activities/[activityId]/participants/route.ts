@@ -57,7 +57,7 @@ export async function GET(
   if (post.userId !== userId) {
     participants.push({
       id: post.user.id,
-      name: post.user.name,
+      name: post.user.name ?? "Unknown",
       photo: post.user.profile?.photos?.[0]?.url ?? null,
     });
   }
@@ -66,7 +66,7 @@ export async function GET(
     if (r.requester.id !== userId) {
       participants.push({
         id: r.requester.id,
-        name: r.requester.name,
+        name: r.requester.name ?? "Unknown",
         photo: r.requester.profile?.photos?.[0]?.url ?? null,
       });
     }
