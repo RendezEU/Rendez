@@ -18,10 +18,15 @@ export async function GET(req: Request) {
           id: true,
           activityCategory: true,
           title: true,
+          description: true,
           activityIntent: true,
           maxParticipants: true,
           locationName: true,
           scheduledAt: true,
+          isRecurring: true,
+          recurringDayOfWeek: true,
+          isFlexible: true,
+          isSpontaneous: true,
           userId: true,
           user: {
             select: {
@@ -29,6 +34,9 @@ export async function GET(req: Request) {
               name: true,
               profile: {
                 select: {
+                  birthDate: true,
+                  city: true,
+                  gender: true,
                   photos: { select: { url: true }, orderBy: { order: "asc" }, take: 1 },
                 },
               },
@@ -49,14 +57,19 @@ export async function GET(req: Request) {
         id: r.activityPost.id,
         activityCategory: r.activityPost.activityCategory,
         title: r.activityPost.title,
+        description: r.activityPost.description,
         activityIntent: r.activityPost.activityIntent,
         maxParticipants: r.activityPost.maxParticipants,
         locationName: r.activityPost.locationName,
         scheduledAt: r.activityPost.scheduledAt,
+        isRecurring: r.activityPost.isRecurring,
+        recurringDayOfWeek: r.activityPost.recurringDayOfWeek,
+        isFlexible: r.activityPost.isFlexible,
+        isSpontaneous: r.activityPost.isSpontaneous,
       },
       host: {
         id: r.activityPost.user.id,
-        name: r.activityPost.user.name,
+        name: r.activityPost.user.name ?? "Unknown",
         profile: r.activityPost.user.profile,
       },
     }))
