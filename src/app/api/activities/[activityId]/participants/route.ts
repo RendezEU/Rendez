@@ -8,32 +8,69 @@ export async function GET(
 ) {
   const auth = await requireAuth(req);
   if (auth instanceof NextResponse) return auth;
+  const userId = auth;
 
   const { activityId } = await params;
 
-  const requests = await prisma.feedMatchRequest.findMany({
-    where: { activityPostId: activityId, isWaitlist: false },
-    include: {
-      requester: {
-        select: {
-          id: true,
-          name: true,
-          profile: {
-            select: {
-              photos: { where: { isPrimary: true }, take: 1, select: { url: true } },
+  const [post, requests] = await Promise.all([
+    prisma.activityPost.findUnique({
+      where: { id: activityId },
+      select: {
+        userId: true,
+        user: {
+          select: {
+            id: true,
+            name: true,
+            profile: {
+              select: {
+                photos: { where: { isPrimary: true }, take: 1, select: { url: true } },
+              },
             },
           },
         },
       },
-    },
-    orderBy: { createdAt: "asc" },
-  });
+    }),
+    prisma.feedMatchRequest.findMany({
+      where: { activityPostId: activityId, isWaitlist: false },
+      include: {
+        requester: {
+          select: {
+            id: true,
+            name: true,
+            profile: {
+              select: {
+                photos: { where: { isPrimary: true }, take: 1, select: { url: true } },
+              },
+            },
+          },
+        },
+      },
+      orderBy: { createdAt: "asc" },
+    }),
+  ]);
 
-  return NextResponse.json(
-    requests.map((r) => ({
-      id: r.requester.id,
-      name: r.requester.name,
-      photo: r.requester.profile?.photos?.[0]?.url ?? null,
-    }))
-  );
+  if (!post) return NextResponse.json({ error: "Not found." }, { status: 404 });
+
+  // Host first, then accepted requesters — exclude calling user (shown as "You" in the UI)
+  const participants: { id: string; name: string; photo: string | null }[] = [];
+
+  if (post.userId !== userId) {
+    participants.push({
+      id: post.user.id,
+      name: post.user.name,
+      photo: post.user.profile?.photos?.[0]?.url ?? null,
+    });
+  }
+
+  for (const r of requests) {
+    if (r.requester.id !== userId) {
+      participants.push({
+        id: r.requester.id,
+        name: r.requester.name,
+        photo: r.requester.profile?.photos?.[0]?.url ?? null,
+      });
+    }
+  }
+
+  return NextResponse.json(participants);
 }
