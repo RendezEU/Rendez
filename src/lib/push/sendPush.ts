@@ -13,7 +13,10 @@ async function sendAndCleanup(messages: object[], tokens: { token: string }[]) {
       headers: { "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify(messages),
     });
-    if (!res.ok) return;
+    if (!res.ok) {
+      console.error(`[push] Expo push API error ${res.status}:`, await res.text().catch(() => ""));
+      return;
+    }
     const json = (await res.json()) as { data: ExpoReceipt[] } | ExpoReceipt[];
     const receipts: ExpoReceipt[] = Array.isArray(json) ? json : json.data ?? [];
 
