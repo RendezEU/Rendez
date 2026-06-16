@@ -87,17 +87,61 @@ export async function POST(req: Request) {
 
     case "customer.subscription.updated": {
       const sub = event.data.object as Stripe.Subscription;
+      const userId = sub.metadata?.userId;
       await prisma.billing.updateMany({
-        where: { stripeSubscriptionId: sub.id },
+        where: userId ? { userId } : { stripeSubscriptionId: sub.id },
         data: {
-          // Reactivate tier if subscription is live again (e.g. past_due → active)
           ...(sub.status === "active" ? { tier: "PREMIUM" } : {}),
+          stripeSubscriptionId: sub.id,
           subscriptionStatus: sub.status,
           subscriptionEndsAt: sub.current_period_end
             ? new Date(sub.current_period_end * 1000)
             : undefined,
         },
       });
+      break;
+    }
+
+    // Mobile SDK: PaymentIntent confirmed in-app (credits & tips)
+    case "payment_intent.succeeded": {
+      const pi = event.data.object as Stripe.PaymentIntent;
+      const userId = pi.metadata?.userId;
+      const type   = pi.metadata?.type;
+      if (!userId) break;
+
+      if (type === "credit") {
+        await prisma.billing.updateMany({
+          where: { userId },
+          data: { purchasedCredits: { increment: 1 } },
+        });
+        const billing = await prisma.billing.findUnique({ where: { userId } });
+        if (billing) {
+          await prisma.billingEvent.create({
+            data: {
+              billingId: billing.id,
+              eventType: "MATCH_CREDIT_PURCHASED",
+              stripeEventId: event.id,
+              amount: pi.amount,
+              currency: pi.currency,
+            },
+          });
+        }
+      }
+
+      if (type === "tip") {
+        const billing = await prisma.billing.findUnique({ where: { userId } });
+        if (billing) {
+          await prisma.billingEvent.create({
+            data: {
+              billingId: billing.id,
+              eventType: "TIP_RECEIVED",
+              stripeEventId: event.id,
+              amount: pi.amount,
+              currency: pi.currency,
+            },
+          });
+        }
+      }
       break;
     }
   }

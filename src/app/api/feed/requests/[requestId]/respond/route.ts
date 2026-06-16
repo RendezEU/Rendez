@@ -128,9 +128,9 @@ export async function POST(
   await Promise.all([
     sendPushToUser(
       feedRequest.requesterId,
-      `${ownerName?.name ?? "Someone"} accepted your interest 🎉`,
-      "You're connected! Head to Matches to start planning your Rendez.",
-      { matchId: match.id, screen: "matches" }
+      `${ownerName?.name ?? "Someone"} accepted your interest! 🎉`,
+      "It's confirmed — check your home screen to see your upcoming Rendez.",
+      { screen: "home" }
     ),
     triggerUserEvent(feedRequest.requesterId, "new-match", {
       matchId: match.id,

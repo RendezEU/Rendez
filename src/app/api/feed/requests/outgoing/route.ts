@@ -1,11 +1,42 @@
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth/session";
 import { prisma } from "@/lib/db/client";
+import { sendPushToUser } from "@/lib/push/sendPush";
 
 export async function GET(req: Request) {
   const auth = await requireAuth(req);
   if (auth instanceof NextResponse) return auth;
   const userId = auth;
+
+  // Lazy 24h auto-decline: any community-post interest that has been PENDING for
+  // more than 24 hours without a host response is auto-declined right now, and
+  // the requester is notified. This runs on every fetch so the user always sees
+  // the correct state without waiting for a nightly cron.
+  const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const stale = await prisma.feedMatchRequest.findMany({
+    where: {
+      requesterId: userId,
+      status: "PENDING",
+      isWaitlist: false,
+      activityPost: { isRendezEvent: false },
+      createdAt: { lt: cutoff },
+    },
+    select: { id: true, activityPost: { select: { title: true } } },
+  });
+  if (stale.length > 0) {
+    await prisma.feedMatchRequest.updateMany({
+      where: { id: { in: stale.map((r) => r.id) } },
+      data: { status: "DECLINED" },
+    });
+    for (const r of stale) {
+      await sendPushToUser(
+        userId,
+        "Interest not accepted",
+        `Your interest in "${r.activityPost.title}" wasn't accepted within 24 hours. Keep exploring the feed!`,
+        { screen: "feed" }
+      ).catch(() => {});
+    }
+  }
 
   const requests = await prisma.feedMatchRequest.findMany({
     where: {

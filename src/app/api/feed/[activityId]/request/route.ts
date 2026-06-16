@@ -139,12 +139,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ activit
     },
   });
 
-  // Notify the post owner
+  // Notify the post owner — include the 24h window so they know to act quickly
   const notifBody = parsed.data.message
     ? parsed.data.message.length > 80
       ? parsed.data.message.slice(0, 80) + "…"
       : parsed.data.message
-    : "Tap to view their profile and decide.";
+    : "You have 24 hours to accept or it will be auto-declined.";
   await sendPushToUser(
     post.userId,
     `${requesterUser?.name ?? "Someone"} is interested in your post 💌`,

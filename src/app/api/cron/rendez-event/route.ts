@@ -187,7 +187,6 @@ const VENUES_BY_CATEGORY: Record<string, string[]> = {
     "The Shelbourne Bar, MacCurtain Street, Cork",
     "Reardens, Washington Street, Cork",
     "Cask, MacCurtain Street, Cork",
-    "Monk Cocktail Bar, North Mall, Cork",
     "Deep South, Grand Parade, Cork",
     "Dan Lowrey's, MacCurtain Street, Cork",
     "Le Chateau, Patrick Street, Cork",
@@ -543,6 +542,21 @@ const EVENT_SLOTS: Array<{
     themeHint: "Couples dinner night — shared table for pairs, relaxed atmosphere, good food and great conversation with other couples.",
   },
   {
+    category:       "DRINKS",
+    intent:         "FRIENDS",
+    dayOffset:      4, hour: 18, durationHours: 2.5,
+    maxParticipants: 8, // = 8 couple slots
+    isCouplesEvent: true,
+    // Year-round — indoor, wine bar setting
+    themeHint: "Couples wine evening — intimate shared table for pairs, curated wines, relaxed atmosphere and easy conversation with other couples in a proper wine bar.",
+    venueOverrides: [
+      "Latitude Wine Bar, Cork",
+      "MacCurtain Wine Cellar, MacCurtain Street, Cork",
+      "Old Brenna's Wine House, Cork",
+      "Moody Café Vin Bar, Cork",
+    ],
+  },
+  {
     category:       "DANCING",
     intent:         "OPEN",
     dayOffset:      6, hour: 19, durationHours: 2,
@@ -619,9 +633,10 @@ Week variation seed: ${weekIndex} — vary the angle or hook slightly each week 
 
 TITLE RULES — read carefully:
 - Max 55 characters. Warm and specific.
-- Do NOT include any day name (Monday, Tuesday, Wednesday, etc.) or time — the app displays the date separately. A day name in the title will visibly mismatch when the event runs on a different week.
-- Good: "Morning Group Run", "Evening Social Drinks", "Outdoor Yoga Session"
-- Bad: "Friday Drinks" ← day name, "Tuesday Morning Run" ← day name
+- Do NOT include any day name (Monday, Tuesday, Wednesday, etc.) or time — the app displays the date separately.
+- Do NOT include the venue name or any location — the app shows the venue separately below the title.
+- Good: "Morning Group Run", "Evening Social Drinks", "Outdoor Yoga Session", "Sunset Walk & Chat"
+- Bad: "Friday Drinks" ← day name, "Drinks at The Franciscan Well" ← venue name in title
 
 DESCRIPTION RULES:
 - One or two sentences, max 200 characters.
@@ -645,9 +660,14 @@ Return ONLY valid JSON — no markdown, no explanation:
   const cleaned = raw.replace(/^```json?\s*/i, "").replace(/\s*```$/i, "");
   const parsed  = JSON.parse(cleaned) as { title: string; description: string };
 
-  // Safety net: strip any day name that slipped through anyway
+  // Strip day names that slipped through
   const dayPattern = /\b(monday|tuesday|wednesday|thursday|friday|saturday|sunday)\b/gi;
-  const title = parsed.title.replace(dayPattern, "").replace(/\s{2,}/g, " ").trim();
+  let title = parsed.title.replace(dayPattern, "").replace(/\s{2,}/g, " ").trim();
+
+  // Strip venue name if the AI included it (e.g. "Drinks at The Franciscan Well" → "Drinks")
+  const venueEscaped = selectedVenue.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const venuePattern = new RegExp(`\\s*(at|@|in|-)\\s+${venueEscaped}`, "gi");
+  title = title.replace(venuePattern, "").replace(/\s{2,}/g, " ").trim();
 
   return { title, description: parsed.description, locationName: selectedVenue };
 }

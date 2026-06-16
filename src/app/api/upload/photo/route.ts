@@ -33,11 +33,20 @@ export async function POST(req: Request) {
   const ext = file.name.split(".").pop() ?? "jpg";
   const filename = `profiles/${userId}.${ext}`;
 
-  const blob = await put(filename, file, {
-    access: "public",
-    contentType: file.type,
-    addRandomSuffix: false,
-  });
+  let blob: { url: string };
+  try {
+    const buffer = await file.arrayBuffer();
+    blob = await put(filename, buffer, {
+      access: "public",
+      contentType: file.type,
+      addRandomSuffix: false,
+      allowOverwrite: true,
+    });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("[upload/photo] blob upload failed:", msg);
+    return NextResponse.json({ error: `Upload failed: ${msg}` }, { status: 500 });
+  }
 
   const profile = await prisma.profile.findUnique({ where: { userId } });
   if (!profile) {

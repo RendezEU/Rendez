@@ -51,24 +51,33 @@ export async function GET(req: Request) {
     }
   }
 
-  // ── 2. Expire stale feed interest requests (older than 7 days) ──────────
-  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  // ── 2. Auto-decline feed interest requests not responded to within 24 hours ──
+  // Only applies to community posts (isRendezEvent: false) — Rendez event joins
+  // are confirmed immediately on the frontend and don't require host approval.
+  const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
   const staleRequests = await prisma.feedMatchRequest.findMany({
-    where: { status: "PENDING", createdAt: { lt: sevenDaysAgo } },
-    include: { activityPost: { select: { title: true } } },
+    where: {
+      status: "PENDING",
+      isWaitlist: false,
+      activityPost: { isRendezEvent: false },
+      createdAt: { lt: twentyFourHoursAgo },
+    },
+    include: {
+      activityPost: { select: { title: true } },
+    },
   });
 
   if (staleRequests.length > 0) {
     await prisma.feedMatchRequest.updateMany({
       where: { id: { in: staleRequests.map((r) => r.id) } },
-      data: { status: "EXPIRED" },
+      data: { status: "DECLINED" },
     });
 
     for (const r of staleRequests) {
       await sendPushToUser(
         r.requesterId,
-        "Interest request expired",
-        `Your interest in "${r.activityPost.title}" wasn't responded to in time. Keep exploring the feed!`,
+        "Interest not accepted",
+        `Your interest in "${r.activityPost.title}" wasn't accepted within 24 hours. Keep exploring the feed!`,
         { screen: "feed" }
       );
     }

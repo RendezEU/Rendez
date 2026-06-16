@@ -39,6 +39,30 @@ export async function GET(
     select: { id: true },
   });
 
+  // Gender counts for open Rendez events (shown as men/women bar in detail screen)
+  let maleCount: number | undefined;
+  let femaleCount: number | undefined;
+  let genderSlotMax: number | undefined;
+  if (post.isRendezEvent && !post.genderRestriction && !post.isCouplesEvent) {
+    type GenderRow = { gender: string | null; cnt: bigint };
+    const rows = await prisma.$queryRaw<GenderRow[]>`
+      SELECT pr."gender", COUNT(*)::bigint AS cnt
+      FROM "FeedMatchRequest" r
+      JOIN "Profile" pr ON pr."userId" = r."requesterId"
+      WHERE r."activityPostId" = ${activityId}
+        AND r."isWaitlist" = false
+        AND pr."gender" IN ('MALE', 'FEMALE')
+      GROUP BY pr."gender"
+    `;
+    maleCount = 0;
+    femaleCount = 0;
+    for (const row of rows) {
+      if (row.gender === "MALE")   maleCount   = Number(row.cnt);
+      if (row.gender === "FEMALE") femaleCount = Number(row.cnt);
+    }
+    genderSlotMax = Math.floor((post.maxParticipants ?? 12) / 2);
+  }
+
   return NextResponse.json({
     id: post.id,
     activityCategory: post.activityCategory,
@@ -54,6 +78,8 @@ export async function GET(
     isFlexible: post.isFlexible,
     isRecurring: post.isRecurring,
     isRendezEvent: post.isRendezEvent,
+    genderRestriction: post.genderRestriction,
+    isCouplesEvent: post.isCouplesEvent,
     recurringDayOfWeek: post.recurringDayOfWeek,
     maxParticipants: post.maxParticipants,
     createdAt: post.createdAt,
@@ -61,6 +87,9 @@ export async function GET(
     requestCount: post._count.matchRequests,
     isFull: post._count.matchRequests >= (post.maxParticipants ?? 1),
     myRequest: !!myRequest,
+    maleCount,
+    femaleCount,
+    genderSlotMax,
   });
 }
 
