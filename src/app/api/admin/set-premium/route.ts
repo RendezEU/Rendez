@@ -9,10 +9,8 @@ export async function POST(req: Request) {
   const { email } = await req.json();
   if (!email) return NextResponse.json({ error: "email required" }, { status: 400 });
 
-  const user = await prisma.user.update({
-    where: { email },
-    data: { tier: "PREMIUM" },
-  });
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
   await prisma.billing.upsert({
     where: { userId: user.id },
     create: { userId: user.id, tier: "PREMIUM" },
