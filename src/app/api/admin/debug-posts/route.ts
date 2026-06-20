@@ -9,6 +9,41 @@ export async function GET(req: Request) {
 
   const now = new Date();
 
+  // Check all blocks between real test users
+  const blocks = await prisma.block.findMany({
+    include: {
+      blocker: { select: { email: true } },
+      blocked: { select: { email: true } },
+    },
+  });
+
+  // Simulate what the public feed returns for each test user
+  const testEmails = ["kbeyza94@gmail.com", "icihanozyurt@gmail.com", "kbeyza94@outlook.com", "ibrahim.cihan.ozyurt@gmail.com"];
+  const testUsers = await prisma.user.findMany({
+    where: { email: { in: testEmails } },
+    select: { id: true, email: true },
+  });
+
+  const feedSim: Record<string, string[]> = {};
+  for (const viewer of testUsers) {
+    const blockedByMe = await prisma.block.findMany({ where: { blockerId: viewer.id }, select: { blockedId: true } });
+    const blockedMe = await prisma.block.findMany({ where: { blockedId: viewer.id }, select: { blockerId: true } });
+    const hiddenIds = [...blockedByMe.map((b) => b.blockedId), ...blockedMe.map((b) => b.blockerId)];
+    const visible = await prisma.activityPost.findMany({
+      where: {
+        isActive: true,
+        isRendezEvent: false,
+        expiresAt: { gt: now },
+        userId: { not: viewer.id, notIn: hiddenIds.length > 0 ? hiddenIds : undefined },
+        city: { contains: "Cork", mode: "insensitive" },
+      },
+      select: { id: true, title: true, user: { select: { email: true } } },
+    });
+    feedSim[viewer.email!] = visible.map((p) => `${p.title} (by ${p.user.email})`);
+  }
+
+  return NextResponse.json({ now: now.toISOString(), blocks: blocks.map((b) => `${b.blocker.email} → ${b.blocked.email}`), feedSim });
+
   const posts = await prisma.activityPost.findMany({
     where: { isRendezEvent: false },
     orderBy: { createdAt: "desc" },
