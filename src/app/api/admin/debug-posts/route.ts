@@ -23,8 +23,10 @@ export async function GET(req: Request) {
       isRecurring: true,
       scheduledAt: true,
       expiresAt: true,
+      maxParticipants: true,
       createdAt: true,
       user: { select: { id: true, name: true, email: true } },
+      _count: { select: { matchRequests: true } },
     },
   });
 
@@ -40,6 +42,9 @@ export async function GET(req: Request) {
       isSpontaneous: p.isSpontaneous,
       isFlexible: p.isFlexible,
       isRecurring: p.isRecurring,
+      maxParticipants: p.maxParticipants,
+      matchRequests: p._count.matchRequests,
+      isFull: p._count.matchRequests >= (p.maxParticipants ?? 1),
       scheduledAt: p.scheduledAt?.toISOString() ?? null,
       expiresAt: p.expiresAt?.toISOString() ?? null,
       isExpired: p.expiresAt ? p.expiresAt < now : false,
