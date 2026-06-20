@@ -225,7 +225,9 @@ export async function POST(req: Request) {
   } else {
     if (!parsed.data.scheduledAt) return NextResponse.json({ error: "scheduledAt required." }, { status: 400 });
     scheduled = new Date(parsed.data.scheduledAt);
-    expiresAt = scheduled;
+    // Keep the post alive for 24 hours after the event starts so last-minute joiners
+    // can still see it and it moves to memories cleanly after
+    expiresAt = new Date(scheduled.getTime() + 24 * 60 * 60 * 1000);
   }
 
   // Geocode locationName to approximate coords so the map can pin it correctly
