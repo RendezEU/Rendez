@@ -61,6 +61,7 @@ export async function GET(req: Request) {
                 ratingProfileMatch: true, totalRatings: true,
               },
             },
+            billing: { select: { tier: true } },
           },
         },
         _count: { select: { matchRequests: true } },
@@ -164,6 +165,7 @@ export async function GET(req: Request) {
       creator: {
         ...p.user,
         reputation: p.user.reputation ?? null,
+        tier: p.user.billing?.tier ?? "FREE",
       },
       requestCount: p._count.matchRequests,
       // isFull is true only when accepted (not pending/declined) requests fill all spots
@@ -244,6 +246,25 @@ export async function POST(req: Request) {
     // Keep the post alive for 24 hours after the event starts so last-minute joiners
     // can still see it and it moves to memories cleanly after
     expiresAt = new Date(scheduled.getTime() + 24 * 60 * 60 * 1000);
+  }
+
+  const billing = await prisma.billing.findUnique({ where: { userId } });
+  const isPremium = billing?.tier === "PREMIUM";
+
+  // Free-tier monthly post limit
+  if (!isPremium) {
+    const monthStart = new Date();
+    monthStart.setDate(1);
+    monthStart.setHours(0, 0, 0, 0);
+    const monthlyPostCount = await prisma.activityPost.count({
+      where: { userId, createdAt: { gte: monthStart } },
+    });
+    if (monthlyPostCount >= 3) {
+      return NextResponse.json(
+        { error: "POST_LIMIT", message: "Free members can create 3 posts per month. Upgrade to Premium for unlimited posts." },
+        { status: 429 }
+      );
+    }
   }
 
   // Cap active posts per user to prevent feed flooding

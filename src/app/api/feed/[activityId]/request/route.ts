@@ -10,6 +10,7 @@ const schema = z.object({
 });
 
 const FREE_WEEKLY_LIMIT = 3;
+const FREE_RENDEZ_MONTHLY_LIMIT = 2;
 
 // ─── POST: join event or join waitlist if full ────────────────────────────────
 export async function POST(req: Request, { params }: { params: Promise<{ activityId: string }> }) {
@@ -75,13 +76,34 @@ export async function POST(req: Request, { params }: { params: Promise<{ activit
     }
   }
 
-  // ── Weekly request limit (premium = unlimited) ────────────────────────────
+  // ── Monthly Rendez event limit (server-enforced, premium = unlimited) ────────
+  if (post.isRendezEvent && !isPremium) {
+    const monthStart = new Date();
+    monthStart.setDate(1);
+    monthStart.setHours(0, 0, 0, 0);
+    const rendezThisMonth = await prisma.feedMatchRequest.count({
+      where: {
+        requesterId: userId,
+        isWaitlist: false,
+        createdAt: { gte: monthStart },
+        activityPost: { isRendezEvent: true },
+      },
+    });
+    if (rendezThisMonth >= FREE_RENDEZ_MONTHLY_LIMIT) {
+      return NextResponse.json(
+        { error: "RENDEZ_LIMIT", message: "Free members can join 2 Rendez events per month. Upgrade to Premium for unlimited access." },
+        { status: 429 }
+      );
+    }
+  }
+
+  // ── Weekly community request limit (premium = unlimited) ─────────────────
   const weekStart = new Date();
   weekStart.setDate(weekStart.getDate() - weekStart.getDay());
   weekStart.setHours(0, 0, 0, 0);
 
-  const weeklyCount = isPremium ? 0 : await prisma.feedMatchRequest.count({
-    where: { requesterId: userId, isWaitlist: false, createdAt: { gte: weekStart } },
+  const weeklyCount = (isPremium || post.isRendezEvent) ? 0 : await prisma.feedMatchRequest.count({
+    where: { requesterId: userId, isWaitlist: false, createdAt: { gte: weekStart }, activityPost: { isRendezEvent: false } },
   });
 
   // ── Already requested? ─────────────────────────────────────────────────────
@@ -90,9 +112,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ activit
   });
   if (existing) return NextResponse.json({ error: "Already requested." }, { status: 409 });
 
-  // ── Check weekly limit before ANY join (confirmed or waitlist) ──────────────
-  // Waitlist joins previously bypassed this check, letting free users game the limit.
-  if (!isPremium && weeklyCount >= FREE_WEEKLY_LIMIT) {
+  // ── Check weekly limit before ANY community join (confirmed or waitlist) ───
+  if (!isPremium && !post.isRendezEvent && weeklyCount >= FREE_WEEKLY_LIMIT) {
     return NextResponse.json({ error: "Weekly request limit reached." }, { status: 429 });
   }
 
