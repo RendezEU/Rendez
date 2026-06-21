@@ -116,7 +116,7 @@ export async function PATCH(
   if (!post.isActive) return NextResponse.json({ error: "Not found." }, { status: 404 });
 
   const body = await req.json();
-  const { title, description, scheduledAt, locationName, city, maxParticipants, activityIntent } = body;
+  const { title, description, scheduledAt, locationName, city, maxParticipants, activityIntent, activityCategory } = body;
 
   const updated = await prisma.activityPost.update({
     where: { id: activityId },
@@ -128,6 +128,7 @@ export async function PATCH(
       ...(city !== undefined && { city: String(city).trim() }),
       ...(maxParticipants !== undefined && { maxParticipants: Math.min(6, Math.max(1, Number(maxParticipants))) }),
       ...(activityIntent !== undefined && { activityIntent }),
+      ...(activityCategory !== undefined && { activityCategory }),
     },
   });
 
