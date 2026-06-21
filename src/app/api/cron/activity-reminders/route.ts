@@ -76,7 +76,7 @@ export async function GET(req: Request) {
     },
     include: {
       matchRequests: {
-        where: { status: "ACCEPTED" },
+        where: { isWaitlist: false, status: { not: "DECLINED" } },
         include: { requester: { select: { id: true } } },
       },
     },

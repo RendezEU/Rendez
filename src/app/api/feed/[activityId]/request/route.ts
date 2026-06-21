@@ -60,6 +60,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ activit
         where: {
           activityPostId: activityId,
           isWaitlist: false,
+          status: { not: "DECLINED" },
           requester: { profile: { gender: requesterGender } },
         },
       });

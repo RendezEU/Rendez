@@ -61,7 +61,8 @@ export async function GET(req: Request) {
   const rendezAttendances = await prisma.feedMatchRequest.findMany({
     where: {
       requesterId: userId,
-      status: { not: "PENDING" },
+      isWaitlist: false,
+      status: { not: "DECLINED" },
       activityPost: { isRendezEvent: true, scheduledAt: { lt: now } },
     },
     include: {
@@ -81,14 +82,14 @@ export async function GET(req: Request) {
       userId,
       isRendezEvent: false,
       scheduledAt: { lt: now },
-      matchRequests: { some: { status: { not: "PENDING" } } },
+      matchRequests: { some: { status: "ACCEPTED" } },
     },
     select: {
       id: true, title: true, activityCategory: true, activityIntent: true,
       scheduledAt: true, locationName: true,
       _count: { select: { matchRequests: true } },
       matchRequests: {
-        where: { status: { not: "PENDING" } },
+        where: { status: "ACCEPTED" },
         select: { requester: { select: { id: true, name: true, profile: { select: { photos: { where: { isPrimary: true }, take: 1 }, allowShareCard: true } } } } },
         orderBy: { createdAt: "asc" },
         take: 3,

@@ -12,7 +12,7 @@ export async function GET(req: Request) {
     orderBy: { scheduledAt: "asc" },
     include: {
       _count: { select: { matchRequests: true } },
-      matchRequests: { where: { status: "ACCEPTED", isWaitlist: false }, select: { id: true } },
+      matchRequests: { where: { isWaitlist: false, status: { not: "DECLINED" } }, select: { id: true } },
     },
   });
 

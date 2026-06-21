@@ -33,14 +33,14 @@ export async function GET(
 
   if (!post) return NextResponse.json({ error: "Not found." }, { status: 404 });
 
-  // Check if requesting user already sent interest + count accepted-only for isFull
+  // Check if requesting user already sent interest + count confirmed spots for isFull
   const [myRequest, acceptedCount] = await Promise.all([
     prisma.feedMatchRequest.findUnique({
       where: { activityPostId_requesterId: { activityPostId: activityId, requesterId: userId } },
       select: { id: true },
     }),
     prisma.feedMatchRequest.count({
-      where: { activityPostId: activityId, isWaitlist: false, status: "ACCEPTED" },
+      where: { activityPostId: activityId, isWaitlist: false, status: { not: "DECLINED" } },
     }),
   ]);
 
