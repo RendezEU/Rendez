@@ -65,9 +65,9 @@ export async function GET(req: Request) {
           },
         },
         _count: { select: { matchRequests: true } },
-        // Accepted-only subset — used for isFull (pending/declined must not block a spot)
+        // Non-waitlist, non-declined — matches the capacity check in the join route
         matchRequests: {
-          where: { status: "ACCEPTED" },
+          where: { isWaitlist: false, status: { not: "DECLINED" } },
           select: { id: true },
         },
       },
