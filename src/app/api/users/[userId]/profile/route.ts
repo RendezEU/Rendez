@@ -22,6 +22,7 @@ export async function GET(
             promptAnswers: true,
           },
         },
+        billing: { select: { tier: true } },
       },
     }),
     prisma.match.count({
@@ -34,5 +35,5 @@ export async function GET(
 
   if (!user) return NextResponse.json({ error: "Not found." }, { status: 404 });
 
-  return NextResponse.json({ ...user, datesCompleted });
+  return NextResponse.json({ ...user, tier: user.billing?.tier ?? "FREE", datesCompleted });
 }
