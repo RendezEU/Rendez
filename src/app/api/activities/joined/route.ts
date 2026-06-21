@@ -10,7 +10,7 @@ export async function GET(req: Request) {
   const userId = auth;
 
   const requests = await prisma.feedMatchRequest.findMany({
-    where: { requesterId: userId, isWaitlist: false, status: "ACCEPTED" },
+    where: { requesterId: userId, isWaitlist: false, status: { not: "DECLINED" } },
     include: {
       activityPost: {
         select: {
