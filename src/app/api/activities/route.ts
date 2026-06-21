@@ -55,6 +55,12 @@ export async function GET(req: Request) {
                 photos: { where: { isPrimary: true }, take: 1 },
               },
             },
+            reputation: {
+              select: {
+                ratingShowUp: true, ratingKindness: true,
+                ratingProfileMatch: true, totalRatings: true,
+              },
+            },
           },
         },
         _count: { select: { matchRequests: true } },
@@ -155,7 +161,10 @@ export async function GET(req: Request) {
       maxParticipants: p.maxParticipants,
       activityIntent: p.activityIntent,
       createdAt: p.createdAt,
-      creator: p.user,
+      creator: {
+        ...p.user,
+        reputation: p.user.reputation ?? null,
+      },
       requestCount: p._count.matchRequests,
       // isFull is true only when accepted (not pending/declined) requests fill all spots
       isFull: p.matchRequests.length >= (p.maxParticipants ?? 1),

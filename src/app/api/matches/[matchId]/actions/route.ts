@@ -181,8 +181,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ matchId
       });
       await prisma.finalizedPlan.delete({ where: { matchId } });
     }
-    // Clear all proposals for this match
-    await prisma.systemAction.deleteMany({ where: { matchId } });
+    // Clear only proposal/acceptance actions — preserve icebreaker answers and other chat records
+    await prisma.systemAction.deleteMany({
+      where: { matchId, actionType: { in: ["PROPOSE_TIME", "ACCEPT_TIME", "PROPOSE_LOCATION", "ACCEPT_LOCATION", "CONFIRM_PLAN"] } },
+    });
     await prisma.match.update({ where: { id: matchId }, data: { status: "COORDINATING" } });
     await triggerMatchEvent(matchId, "rescheduled", { matchId });
     await sendPushToUser(

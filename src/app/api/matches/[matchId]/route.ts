@@ -44,5 +44,12 @@ export async function GET(req: Request, { params }: { params: Promise<{ matchId:
     return NextResponse.json({ error: "Forbidden." }, { status: 403 });
   }
 
-  return NextResponse.json(match);
+  // Mobile reads availabilitySlots under profile (e.g. userA.profile.availabilitySlots)
+  // but Prisma returns it as a sibling of profile. Nest it here so the shape matches.
+  function nestSlots<T extends { availabilitySlots: unknown; profile: Record<string, unknown> | null }>(u: T) {
+    const { availabilitySlots, profile, ...rest } = u;
+    return { ...rest, profile: profile ? { ...profile, availabilitySlots } : null };
+  }
+
+  return NextResponse.json({ ...match, userA: nestSlots(match.userA), userB: nestSlots(match.userB) });
 }

@@ -86,6 +86,7 @@ export async function GET(req: Request) {
     requests.map((r) => ({
       id: r.id,
       status: r.status,
+      matchId: r.matchId ?? null,
       createdAt: r.createdAt,
       activityPost: {
         id: r.activityPost.id,

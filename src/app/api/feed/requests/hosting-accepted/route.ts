@@ -40,6 +40,7 @@ export async function GET(req: Request) {
   return NextResponse.json(
     requests.map((r) => ({
       activityPostId: r.activityPost.id,
+      matchId: r.matchId ?? null,
       title: r.activityPost.title,
       category: r.activityPost.activityCategory,
       locationName: r.activityPost.locationName,

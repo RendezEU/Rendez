@@ -105,7 +105,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ activit
 
   const request = await prisma.$transaction(async (tx) => {
     const confirmedCount = await tx.feedMatchRequest.count({
-      where: { activityPostId: activityId, isWaitlist: false },
+      where: { activityPostId: activityId, isWaitlist: false, status: { not: "DECLINED" } },
     });
     const isFull = confirmedCount >= maxParticipants;
     placedOnWaitlist = isFull;
