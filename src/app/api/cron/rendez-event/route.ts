@@ -152,11 +152,11 @@ const VENUES_BY_CATEGORY: Record<string, string[]> = {
     "Fitzgerald's Park, Cork",
     "Bishop Lucey Park, Cork",
     "Lee Fields, Cork",
-    "Nano Nagle Place gardens, Cork",
     "Marina Park, Cork",
     "Ballincollig Regional Park, Cork",
-    "UCC Quad, Cork",
     "Tramore Valley Park, Cork",
+    "Mardyke Walk, Cork",
+    "Sunday's Well, Cork",
   ],
   DINNER: [
     "The Elbow Lane, Cork city centre",
