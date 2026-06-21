@@ -101,10 +101,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ activit
   // ── Atomic capacity check + create inside a transaction ───────────────────
   // Without a transaction two concurrent requests both see confirmedCount < max
   // and both insert confirmed (non-waitlist) records, overbooking the event.
-  let request: Awaited<ReturnType<typeof prisma.feedMatchRequest.create>>;
   let placedOnWaitlist = false;
 
-  request = await prisma.$transaction(async (tx) => {
+  const request = await prisma.$transaction(async (tx) => {
     const confirmedCount = await tx.feedMatchRequest.count({
       where: { activityPostId: activityId, isWaitlist: false },
     });

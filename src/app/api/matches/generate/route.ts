@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { requireAuth } from "@/lib/auth/session";
 import { generateWeeklyMatches } from "@/lib/ai/matching-engine";
 
 // On-demand AI matching trigger — admin/cron only.
