@@ -58,6 +58,11 @@ export async function GET(req: Request) {
           },
         },
         _count: { select: { matchRequests: true } },
+        // Accepted-only subset — used for isFull (pending/declined must not block a spot)
+        matchRequests: {
+          where: { status: "ACCEPTED" },
+          select: { id: true },
+        },
       },
     }),
     prisma.feedMatchRequest.findMany({
@@ -152,6 +157,8 @@ export async function GET(req: Request) {
       createdAt: p.createdAt,
       creator: p.user,
       requestCount: p._count.matchRequests,
+      // isFull is true only when accepted (not pending/declined) requests fill all spots
+      isFull: p.matchRequests.length >= (p.maxParticipants ?? 1),
       myRequest: myRequestedIds.has(p.id),
       // Gender balance fields — only meaningful for open Rendez events
       maleCount:         p.isRendezEvent && !p.genderRestriction && !p.isCouplesEvent
