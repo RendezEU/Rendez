@@ -10,7 +10,10 @@ export async function GET(req: Request) {
   const posts = await prisma.activityPost.findMany({
     where: { userId, isActive: true },
     orderBy: { scheduledAt: "asc" },
-    include: { _count: { select: { matchRequests: true } } },
+    include: {
+      _count: { select: { matchRequests: true } },
+      matchRequests: { where: { status: "ACCEPTED", isWaitlist: false }, select: { id: true } },
+    },
   });
 
   return NextResponse.json(
@@ -33,7 +36,7 @@ export async function GET(req: Request) {
       createdAt: p.createdAt.toISOString(),
       isPast: p.scheduledAt ? p.scheduledAt < new Date() : false,
       requestCount: p._count.matchRequests,
-      isFull: p._count.matchRequests >= (p.maxParticipants ?? 1),
+      isFull: p.matchRequests.length >= (p.maxParticipants ?? 1),
       myRequest: false, // it's the user's own post
     }))
   );

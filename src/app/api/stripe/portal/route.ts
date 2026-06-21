@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
-import { getRequiredSession } from "@/lib/auth/session";
+import { requireAuth } from "@/lib/auth/session";
 import { stripe } from "@/lib/stripe/client";
 import { prisma } from "@/lib/db/client";
 
-export async function POST() {
-  const session = await getRequiredSession();
-  const billing = await prisma.billing.findUnique({ where: { userId: session.user?.id as string } });
+export async function POST(req: Request) {
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
+  const userId = auth;
+  const billing = await prisma.billing.findUnique({ where: { userId } });
 
   if (!billing?.stripeCustomerId) {
     return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/settings/billing`);

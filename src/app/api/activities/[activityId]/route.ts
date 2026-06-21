@@ -98,6 +98,42 @@ export async function GET(
   });
 }
 
+export async function PATCH(
+  req: Request,
+  { params }: { params: Promise<{ activityId: string }> }
+) {
+  const auth = await requireAuth(req);
+  if (auth instanceof NextResponse) return auth;
+  const userId = auth;
+  const { activityId } = await params;
+
+  const post = await prisma.activityPost.findUnique({
+    where: { id: activityId },
+    select: { userId: true, isActive: true },
+  });
+  if (!post) return NextResponse.json({ error: "Not found." }, { status: 404 });
+  if (post.userId !== userId) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+  if (!post.isActive) return NextResponse.json({ error: "Not found." }, { status: 404 });
+
+  const body = await req.json();
+  const { title, description, scheduledAt, locationName, city, maxParticipants, activityIntent } = body;
+
+  const updated = await prisma.activityPost.update({
+    where: { id: activityId },
+    data: {
+      ...(title !== undefined && { title: String(title).trim().slice(0, 100) }),
+      ...(description !== undefined && { description: description ? String(description).slice(0, 600) : null }),
+      ...(scheduledAt !== undefined && { scheduledAt: scheduledAt ? new Date(scheduledAt) : null }),
+      ...(locationName !== undefined && { locationName: locationName || null }),
+      ...(city !== undefined && { city: String(city).trim() }),
+      ...(maxParticipants !== undefined && { maxParticipants: Math.min(6, Math.max(1, Number(maxParticipants))) }),
+      ...(activityIntent !== undefined && { activityIntent }),
+    },
+  });
+
+  return NextResponse.json(updated);
+}
+
 export async function DELETE(
   req: Request,
   { params }: { params: Promise<{ activityId: string }> }

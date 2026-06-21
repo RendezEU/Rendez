@@ -171,12 +171,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ matchId
     // Unblock availability slots
     if (match.finalizedPlan) {
       const scheduledAt = new Date(match.finalizedPlan.scheduledAt);
+      // CONFIRM_PLAN sets blockedUntil = scheduledAt + 3h, so we must match that exact value
+      const blockedUntil = new Date(scheduledAt.getTime() + 3 * 60 * 60 * 1000);
       const JS_TO_DOW = ["SUNDAY","MONDAY","TUESDAY","WEDNESDAY","THURSDAY","FRIDAY","SATURDAY"] as const;
       const h = scheduledAt.getHours();
       const timeBlock = h < 13 ? "MORNING" : h < 18 ? "AFTERNOON" : h < 21 ? "EVENING" : "NIGHT";
       const dayOfWeek = JS_TO_DOW[scheduledAt.getDay()];
       await prisma.availabilitySlot.updateMany({
-        where: { userId: { in: [match.userAId, match.userBId] }, dayOfWeek, timeBlock, blockedUntil: scheduledAt },
+        where: { userId: { in: [match.userAId, match.userBId] }, dayOfWeek, timeBlock, blockedUntil },
         data: { blockedUntil: null },
       });
       await prisma.finalizedPlan.delete({ where: { matchId } });
@@ -202,12 +204,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ matchId
     // Unblock availability slots if they were blocked by this match
     if (match.finalizedPlan) {
       const scheduledAt = new Date(match.finalizedPlan.scheduledAt);
+      // CONFIRM_PLAN sets blockedUntil = scheduledAt + 3h, so we must match that exact value
+      const blockedUntil = new Date(scheduledAt.getTime() + 3 * 60 * 60 * 1000);
       const JS_TO_DOW = ["SUNDAY","MONDAY","TUESDAY","WEDNESDAY","THURSDAY","FRIDAY","SATURDAY"] as const;
       const h = scheduledAt.getHours();
       const timeBlock = h < 13 ? "MORNING" : h < 18 ? "AFTERNOON" : h < 21 ? "EVENING" : "NIGHT";
       const dayOfWeek = JS_TO_DOW[scheduledAt.getDay()];
       await prisma.availabilitySlot.updateMany({
-        where: { userId: { in: [match.userAId, match.userBId] }, dayOfWeek, timeBlock, blockedUntil: scheduledAt },
+        where: { userId: { in: [match.userAId, match.userBId] }, dayOfWeek, timeBlock, blockedUntil },
         data: { blockedUntil: null },
       });
     }
@@ -216,7 +220,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ matchId
       recipientId,
       `${await senderName()} cancelled the Rendez 😔`,
       "They had to cancel — head to the feed to find a new match!",
-      { screen: "matches" }
+      { matchId, screen: "matches" }
     );
     return NextResponse.json({ ok: true });
   }
