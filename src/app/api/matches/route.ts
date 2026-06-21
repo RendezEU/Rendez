@@ -63,16 +63,19 @@ export async function GET(req: Request) {
     orderBy: { createdAt: "desc" },
   });
 
-  // Compute unread count per match for this user
-  const unreadCounts = await Promise.all(
-    matches.map((m) =>
-      prisma.message.count({
-        where: { matchId: m.id, senderId: { not: userId }, readAt: null },
-      })
-    )
-  );
+  // Compute unread counts in a single grouped query instead of one per match
+  const unreadRows = await prisma.message.groupBy({
+    by: ["matchId"],
+    where: {
+      matchId: { in: matches.map((m) => m.id) },
+      senderId: { not: userId },
+      readAt: null,
+    },
+    _count: { matchId: true },
+  });
+  const unreadMap = new Map(unreadRows.map((r) => [r.matchId, r._count.matchId]));
 
   return NextResponse.json(
-    matches.map((m, i) => ({ ...m, unreadCount: unreadCounts[i] }))
+    matches.map((m) => ({ ...m, unreadCount: unreadMap.get(m.id) ?? 0 }))
   );
 }

@@ -59,21 +59,30 @@ export async function POST(req: Request, { params }: { params: Promise<{ matchId
   const extraGranted = isA ? match.extraMsgGrantedA : match.extraMsgGrantedB;
   const maxMessages = BASE_LIMIT + (extraGranted ? EXTRA_LIMIT : 0);
 
-  const myCount = await prisma.message.count({ where: { matchId, senderId: userId } });
-  if (myCount >= maxMessages) {
-    return NextResponse.json({ error: "MESSAGE_LIMIT_REACHED", limit: maxMessages }, { status: 403 });
+  // Wrap count + create in a transaction so two concurrent requests can't both
+  // pass the limit check before either insert lands (prevents over-limit messages
+  // and duplicate messageIndex values).
+  let message: Awaited<ReturnType<typeof prisma.message.create>> & {
+    sender: { id: string; name: string | null };
+  };
+  try {
+    message = await prisma.$transaction(async (tx) => {
+      const myCount = await tx.message.count({ where: { matchId, senderId: userId } });
+      if (myCount >= maxMessages) {
+        throw Object.assign(new Error("MESSAGE_LIMIT_REACHED"), { isLimit: true });
+      }
+      const totalCount = await tx.message.count({ where: { matchId } });
+      return tx.message.create({
+        data: { matchId, senderId: userId, content: parsed.data.content, messageIndex: totalCount + 1 },
+        include: { sender: { select: { id: true, name: true } } },
+      });
+    });
+  } catch (err: unknown) {
+    if (err instanceof Error && (err as Error & { isLimit?: boolean }).isLimit) {
+      return NextResponse.json({ error: "MESSAGE_LIMIT_REACHED", limit: maxMessages }, { status: 403 });
+    }
+    throw err;
   }
-
-  const totalCount = await prisma.message.count({ where: { matchId } });
-  const message = await prisma.message.create({
-    data: {
-      matchId,
-      senderId: userId,
-      content: parsed.data.content,
-      messageIndex: totalCount + 1,
-    },
-    include: { sender: { select: { id: true, name: true } } },
-  });
 
   await triggerMatchEvent(matchId, "new-message", message);
 

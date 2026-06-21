@@ -33,11 +33,16 @@ export async function GET(
 
   if (!post) return NextResponse.json({ error: "Not found." }, { status: 404 });
 
-  // Check if requesting user already sent interest
-  const myRequest = await prisma.feedMatchRequest.findUnique({
-    where: { activityPostId_requesterId: { activityPostId: activityId, requesterId: userId } },
-    select: { id: true },
-  });
+  // Check if requesting user already sent interest + count accepted-only for isFull
+  const [myRequest, acceptedCount] = await Promise.all([
+    prisma.feedMatchRequest.findUnique({
+      where: { activityPostId_requesterId: { activityPostId: activityId, requesterId: userId } },
+      select: { id: true },
+    }),
+    prisma.feedMatchRequest.count({
+      where: { activityPostId: activityId, isWaitlist: false, status: "ACCEPTED" },
+    }),
+  ]);
 
   // Gender counts for open Rendez events (shown as men/women bar in detail screen)
   let maleCount: number | undefined;
@@ -85,7 +90,7 @@ export async function GET(
     createdAt: post.createdAt,
     creator: post.user,
     requestCount: post._count.matchRequests,
-    isFull: post._count.matchRequests >= (post.maxParticipants ?? 1),
+    isFull: acceptedCount >= (post.maxParticipants ?? 1),
     myRequest: !!myRequest,
     maleCount,
     femaleCount,

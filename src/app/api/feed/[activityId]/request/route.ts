@@ -90,27 +90,40 @@ export async function POST(req: Request, { params }: { params: Promise<{ activit
   });
   if (existing) return NextResponse.json({ error: "Already requested." }, { status: 409 });
 
-  // ── Check if event is full (confirmed spots only) ──────────────────────────
-  const confirmedCount = await prisma.feedMatchRequest.count({
-    where: { activityPostId: activityId, isWaitlist: false },
-  });
-  const maxParticipants = post.maxParticipants ?? 1;
-  const isFull = confirmedCount >= maxParticipants;
+  // ── Check weekly limit before ANY join (confirmed or waitlist) ──────────────
+  // Waitlist joins previously bypassed this check, letting free users game the limit.
+  if (!isPremium && weeklyCount >= FREE_WEEKLY_LIMIT) {
+    return NextResponse.json({ error: "Weekly request limit reached." }, { status: 429 });
+  }
 
-  if (isFull) {
-    // Join the waitlist — premium users get priority flag
-    const request = await prisma.feedMatchRequest.create({
+  const maxParticipants = post.maxParticipants ?? 1;
+
+  // ── Atomic capacity check + create inside a transaction ───────────────────
+  // Without a transaction two concurrent requests both see confirmedCount < max
+  // and both insert confirmed (non-waitlist) records, overbooking the event.
+  let request: Awaited<ReturnType<typeof prisma.feedMatchRequest.create>>;
+  let placedOnWaitlist = false;
+
+  request = await prisma.$transaction(async (tx) => {
+    const confirmedCount = await tx.feedMatchRequest.count({
+      where: { activityPostId: activityId, isWaitlist: false },
+    });
+    const isFull = confirmedCount >= maxParticipants;
+    placedOnWaitlist = isFull;
+
+    return tx.feedMatchRequest.create({
       data: {
         activityPostId: activityId,
         requesterId:    userId,
         message:        parsed.data.message,
         hasPlusOne:     post.isCouplesEvent ? (parsed.data.hasPlusOne ?? false) : false,
-        isWaitlist:     true,
+        isWaitlist:     isFull,
         isPriority:     isPremium,
       },
     });
+  });
 
-    // Notify the post owner so they know someone is waiting
+  if (placedOnWaitlist) {
     await sendPushToUser(
       post.userId,
       `${requesterUser?.name ?? "Someone"} joined your waitlist`,
@@ -119,40 +132,21 @@ export async function POST(req: Request, { params }: { params: Promise<{ activit
         : `Someone is waiting for a spot in "${post.title}".`,
       { screen: "feed", activityId }
     );
-
-    return NextResponse.json({ ...request, isWaitlist: true }, { status: 201 });
+  } else {
+    const notifBody = parsed.data.message
+      ? parsed.data.message.length > 80
+        ? parsed.data.message.slice(0, 80) + "…"
+        : parsed.data.message
+      : "You have 24 hours to accept or it will be auto-declined.";
+    await sendPushToUser(
+      post.userId,
+      `${requesterUser?.name ?? "Someone"} is interested in your post 💌`,
+      notifBody,
+      { screen: "matches" }
+    );
   }
 
-  // ── Confirmed join — check weekly limit (free users only) ────────────────
-  if (!isPremium && weeklyCount >= FREE_WEEKLY_LIMIT) {
-    return NextResponse.json({ error: "Weekly request limit reached." }, { status: 429 });
-  }
-
-  const request = await prisma.feedMatchRequest.create({
-    data: {
-      activityPostId: activityId,
-      requesterId:    userId,
-      message:        parsed.data.message,
-      hasPlusOne:     post.isCouplesEvent ? (parsed.data.hasPlusOne ?? false) : false,
-      isWaitlist:     false,
-      isPriority:     false,
-    },
-  });
-
-  // Notify the post owner — include the 24h window so they know to act quickly
-  const notifBody = parsed.data.message
-    ? parsed.data.message.length > 80
-      ? parsed.data.message.slice(0, 80) + "…"
-      : parsed.data.message
-    : "You have 24 hours to accept or it will be auto-declined.";
-  await sendPushToUser(
-    post.userId,
-    `${requesterUser?.name ?? "Someone"} is interested in your post 💌`,
-    notifBody,
-    { screen: "matches" }
-  );
-
-  return NextResponse.json({ ...request, isWaitlist: false }, { status: 201 });
+  return NextResponse.json({ ...request, isWaitlist: placedOnWaitlist }, { status: 201 });
 }
 
 // ─── DELETE: cancel reservation or leave waitlist ─────────────────────────────
@@ -171,35 +165,38 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ activ
 
   const wasConfirmed = !request.isWaitlist;
 
-  // Delete the request
-  await prisma.feedMatchRequest.delete({
-    where: { activityPostId_requesterId: { activityPostId: activityId, requesterId: userId } },
-  });
-
-  // ── If they had a confirmed spot, promote the next person in the waitlist ──
-  if (wasConfirmed) {
-    // Priority users first, then by join time (FIFO within each tier)
-    const nextInLine = await prisma.feedMatchRequest.findFirst({
-      where: { activityPostId: activityId, isWaitlist: true },
-      orderBy: [{ isPriority: "desc" }, { createdAt: "asc" }],
-      include: { requester: { select: { name: true } } },
+  // ── Delete + promote inside a transaction so two concurrent cancellations
+  // can't both promote the same waitlist person ────────────────────────────
+  let promotedRequesterId: string | null = null;
+  await prisma.$transaction(async (tx) => {
+    await tx.feedMatchRequest.delete({
+      where: { activityPostId_requesterId: { activityPostId: activityId, requesterId: userId } },
     });
 
-    if (nextInLine) {
-      // Promote to confirmed
-      await prisma.feedMatchRequest.update({
-        where: { id: nextInLine.id },
-        data: { isWaitlist: false },
+    if (wasConfirmed) {
+      const nextInLine = await tx.feedMatchRequest.findFirst({
+        where: { activityPostId: activityId, isWaitlist: true },
+        orderBy: [{ isPriority: "desc" }, { createdAt: "asc" }],
+        select: { id: true, requesterId: true },
       });
 
-      // Tell them the good news
-      await sendPushToUser(
-        nextInLine.requesterId,
-        "A spot just opened up — you're in! 🎉",
-        `Someone cancelled their spot in "${request.activityPost.title}". Your reservation is confirmed.`,
-        { screen: "feed", activityId }
-      );
+      if (nextInLine) {
+        await tx.feedMatchRequest.update({
+          where: { id: nextInLine.id },
+          data: { isWaitlist: false },
+        });
+        promotedRequesterId = nextInLine.requesterId;
+      }
     }
+  });
+
+  if (promotedRequesterId) {
+    await sendPushToUser(
+      promotedRequesterId,
+      "A spot just opened up — you're in! 🎉",
+      `Someone cancelled their spot in "${request.activityPost.title}". Your reservation is confirmed.`,
+      { screen: "feed", activityId }
+    );
   }
 
   return NextResponse.json({ ok: true });

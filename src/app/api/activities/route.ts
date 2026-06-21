@@ -237,6 +237,17 @@ export async function POST(req: Request) {
     expiresAt = new Date(scheduled.getTime() + 24 * 60 * 60 * 1000);
   }
 
+  // Cap active posts per user to prevent feed flooding
+  const activePostCount = await prisma.activityPost.count({
+    where: { userId, isActive: true, expiresAt: { gt: now } },
+  });
+  if (activePostCount >= 5) {
+    return NextResponse.json(
+      { error: "You already have 5 active posts. Delete or close an existing one first." },
+      { status: 429 }
+    );
+  }
+
   // Geocode locationName to approximate coords so the map can pin it correctly
   const coords = geocodeVenueName(parsed.data.locationName);
 

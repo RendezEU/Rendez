@@ -59,8 +59,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ matchId
 
   // Handle CONFIRM_PLAN → create FinalizedPlan
   if (actionType === "CONFIRM_PLAN") {
+    // Guard: if plan already exists (network retry / double-tap), return 409
+    // so we don't consume a second credit for the same plan.
+    if (match.finalizedPlan) {
+      return NextResponse.json({ error: "Plan already confirmed." }, { status: 409 });
+    }
+
     // ── Credit gate ───────────────────────────────────────────────────────────
     // One credit is consumed per confirmed Rendez. Premium users are unlimited.
+    // Use conditional updateMany so the decrement is atomic — a concurrent
+    // request that passes the balance check can't race to spend the same credit.
     const billing = await prisma.billing.findUnique({ where: { userId } });
     const isPremium = billing?.tier === "PREMIUM";
     if (!isPremium) {
@@ -72,11 +80,23 @@ export async function POST(req: Request, { params }: { params: Promise<{ matchId
           { status: 402 }
         );
       }
-      // Spend free credits first, then purchased
+      // Spend free credits first, then purchased — atomic conditional update
       if (freeLeft > 0) {
-        await prisma.billing.update({ where: { userId }, data: { freeCreditsRemaining: { decrement: 1 } } });
+        const result = await prisma.billing.updateMany({
+          where: { userId, freeCreditsRemaining: { gt: 0 } },
+          data: { freeCreditsRemaining: { decrement: 1 } },
+        });
+        if (result.count === 0) {
+          return NextResponse.json({ error: "NO_CREDITS", message: "You need a Rendez credit to confirm a plan." }, { status: 402 });
+        }
       } else {
-        await prisma.billing.update({ where: { userId }, data: { purchasedCredits: { decrement: 1 } } });
+        const result = await prisma.billing.updateMany({
+          where: { userId, purchasedCredits: { gt: 0 } },
+          data: { purchasedCredits: { decrement: 1 } },
+        });
+        if (result.count === 0) {
+          return NextResponse.json({ error: "NO_CREDITS", message: "You need a Rendez credit to confirm a plan." }, { status: 402 });
+        }
       }
     }
     // ─────────────────────────────────────────────────────────────────────────
@@ -112,7 +132,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ matchId
         locationUrl: locPayload.locationUrl,
         scheduledAt,
       },
-      update: {},
+      update: {
+        locationName: locPayload.locationName ?? "TBD",
+        locationUrl: locPayload.locationUrl,
+        scheduledAt,
+      },
     });
 
     await prisma.match.update({ where: { id: matchId }, data: { status: "CONFIRMED" } });
@@ -122,9 +146,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ matchId
     const h = scheduledAt.getHours();
     const timeBlock = h < 13 ? "MORNING" : h < 18 ? "AFTERNOON" : h < 21 ? "EVENING" : "NIGHT";
     const dayOfWeek = JS_TO_DOW[scheduledAt.getDay()];
+    // Block until 3 hours after the event starts — at scheduledAt they'd still be on the date
+    const blockedUntil = new Date(scheduledAt.getTime() + 3 * 60 * 60 * 1000);
     await prisma.availabilitySlot.updateMany({
       where: { userId: { in: [match.userAId, match.userBId] }, dayOfWeek, timeBlock },
-      data: { blockedUntil: scheduledAt },
+      data: { blockedUntil },
     });
 
     await triggerMatchEvent(matchId, "plan-confirmed", { matchId });
@@ -230,10 +256,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ matchId
   // Accept actions — notify the original proposer
   if (actionType === "ACCEPT_TIME" || actionType === "ACCEPT_LOCATION") {
     if (!targetActionId) return NextResponse.json({ error: "targetActionId required." }, { status: 400 });
-    const updated = await prisma.systemAction.update({
-      where: { id: targetActionId },
+    // Include matchId in the where clause so a user can't accept proposals
+    // that belong to a different match they're not part of (IDOR).
+    const result = await prisma.systemAction.updateMany({
+      where: { id: targetActionId, matchId },
       data: { acceptedAt: new Date() },
     });
+    if (result.count === 0) return NextResponse.json({ error: "Not found." }, { status: 404 });
+    const updated = await prisma.systemAction.findUnique({ where: { id: targetActionId } });
+    if (!updated) return NextResponse.json({ error: "Not found." }, { status: 404 });
     await triggerMatchEvent(matchId, "action-accepted", updated);
     const isTime = actionType === "ACCEPT_TIME";
     await sendPushToUser(

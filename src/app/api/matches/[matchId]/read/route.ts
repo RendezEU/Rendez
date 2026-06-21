@@ -11,6 +11,16 @@ export async function POST(
   const userId = auth;
   const { matchId } = await params;
 
+  // Verify the caller is a participant — without this check any user could mark
+  // another pair's messages as read, silently corrupting unread counts.
+  const match = await prisma.match.findUnique({
+    where: { id: matchId },
+    select: { userAId: true, userBId: true },
+  });
+  if (!match || (match.userAId !== userId && match.userBId !== userId)) {
+    return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+  }
+
   // Mark all messages in this match NOT sent by this user as read
   await prisma.message.updateMany({
     where: { matchId, senderId: { not: userId }, readAt: null },

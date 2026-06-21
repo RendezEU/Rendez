@@ -5,7 +5,12 @@ import { geocodeCity } from "@/lib/geocode";
 import { z } from "zod";
 
 const schema = z.object({
-  birthDate: z.string(),
+  birthDate: z.string().refine((s) => {
+    const d = new Date(s);
+    if (isNaN(d.getTime())) return false;
+    const ageYears = (Date.now() - d.getTime()) / (365.25 * 24 * 60 * 60 * 1000);
+    return ageYears >= 18;
+  }, { message: "You must be at least 18 years old to use Rendez." }),
   gender: z.enum(["MALE", "FEMALE", "NON_BINARY", "OTHER", "PREFER_NOT_TO_SAY"]),
   genderPreferences: z.array(z.enum(["MALE", "FEMALE", "NON_BINARY", "OTHER", "PREFER_NOT_TO_SAY", "FRIENDS"])).min(1).transform((prefs) => prefs),
   city: z.string().min(1),

@@ -22,19 +22,29 @@ export async function POST(req: Request) {
       if (!userId) break;
 
       if (type === "match_pack") {
-        await prisma.billing.updateMany({
-          where: { userId },
-          data: { purchasedCredits: { increment: 1 } },
+        // Idempotency guard — Stripe delivers webhooks at least once; stripeEventId is @unique
+        const alreadyProcessed = await prisma.billingEvent.findUnique({
+          where: { stripeEventId: event.id },
+          select: { id: true },
         });
-        await prisma.billingEvent.create({
-          data: {
-            billingId: (await prisma.billing.findUnique({ where: { userId } }))!.id,
-            eventType: "MATCH_CREDIT_PURCHASED",
-            stripeEventId: event.id,
-            amount: session.amount_total ?? 250,
-            currency: session.currency ?? "eur",
-          },
-        });
+        if (!alreadyProcessed) {
+          const billing = await prisma.billing.findUnique({ where: { userId } });
+          if (billing) {
+            await prisma.billing.updateMany({
+              where: { userId },
+              data: { purchasedCredits: { increment: 1 } },
+            });
+            await prisma.billingEvent.create({
+              data: {
+                billingId: billing.id,
+                eventType: "MATCH_CREDIT_PURCHASED",
+                stripeEventId: event.id,
+                amount: session.amount_total ?? 250,
+                currency: session.currency ?? "eur",
+              },
+            });
+          }
+        }
       }
 
       if (type === "extra_messages") {
@@ -110,21 +120,28 @@ export async function POST(req: Request) {
       if (!userId) break;
 
       if (type === "credit") {
-        await prisma.billing.updateMany({
-          where: { userId },
-          data: { purchasedCredits: { increment: 1 } },
+        // Idempotency guard — same as checkout.session.completed handler above
+        const alreadyProcessed = await prisma.billingEvent.findUnique({
+          where: { stripeEventId: event.id },
+          select: { id: true },
         });
-        const billing = await prisma.billing.findUnique({ where: { userId } });
-        if (billing) {
-          await prisma.billingEvent.create({
-            data: {
-              billingId: billing.id,
-              eventType: "MATCH_CREDIT_PURCHASED",
-              stripeEventId: event.id,
-              amount: pi.amount,
-              currency: pi.currency,
-            },
-          });
+        if (!alreadyProcessed) {
+          const billing = await prisma.billing.findUnique({ where: { userId } });
+          if (billing) {
+            await prisma.billing.updateMany({
+              where: { userId },
+              data: { purchasedCredits: { increment: 1 } },
+            });
+            await prisma.billingEvent.create({
+              data: {
+                billingId: billing.id,
+                eventType: "MATCH_CREDIT_PURCHASED",
+                stripeEventId: event.id,
+                amount: pi.amount,
+                currency: pi.currency,
+              },
+            });
+          }
         }
       }
 

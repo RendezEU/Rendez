@@ -84,9 +84,21 @@ export async function POST(
         );
       }
       if (freeLeft > 0) {
-        await prisma.billing.update({ where: { userId }, data: { freeCreditsRemaining: { decrement: 1 } } });
+        const result = await prisma.billing.updateMany({
+          where: { userId, freeCreditsRemaining: { gt: 0 } },
+          data: { freeCreditsRemaining: { decrement: 1 } },
+        });
+        if (result.count === 0) {
+          return NextResponse.json({ error: "NO_CREDITS", message: "You need a Rendez credit to confirm this match." }, { status: 402 });
+        }
       } else {
-        await prisma.billing.update({ where: { userId }, data: { purchasedCredits: { decrement: 1 } } });
+        const result = await prisma.billing.updateMany({
+          where: { userId, purchasedCredits: { gt: 0 } },
+          data: { purchasedCredits: { decrement: 1 } },
+        });
+        if (result.count === 0) {
+          return NextResponse.json({ error: "NO_CREDITS", message: "You need a Rendez credit to confirm this match." }, { status: 402 });
+        }
       }
     }
   }

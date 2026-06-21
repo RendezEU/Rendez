@@ -2,12 +2,13 @@ import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/auth/session";
 import { generateWeeklyMatches } from "@/lib/ai/matching-engine";
 
-// On-demand AI matching trigger — requires user auth, no cron secret needed.
-// Runs the full matching engine and returns how many new matches were created.
-// Safe to call multiple times: the engine skips pairs that already have a match.
+// On-demand AI matching trigger — admin/cron only.
+// Any authenticated user could otherwise spam this and burn AI credits.
 export async function POST(req: Request) {
-  const auth = await requireAuth(req);
-  if (auth instanceof NextResponse) return auth;
+  const authHeader = req.headers.get("authorization");
+  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  }
   const result = await generateWeeklyMatches();
   return NextResponse.json(result);
 }

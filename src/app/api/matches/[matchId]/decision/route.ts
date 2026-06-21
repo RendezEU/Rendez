@@ -23,6 +23,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ matchId
   const isB = match.userBId === userId;
   if (!isA && !isB) return NextResponse.json({ error: "Forbidden." }, { status: 403 });
 
+  // Prevent re-votes: a second POST could flip COORDINATING back to REJECTED
+  const alreadyDecided = isA ? match.userADecision !== null : match.userBDecision !== null;
+  if (alreadyDecided) return NextResponse.json({ error: "Already decided." }, { status: 409 });
+
   const { accept } = parsed.data;
 
   const updateData: Record<string, unknown> = isA

@@ -55,6 +55,14 @@ export async function GET(
 
   if (!post) return NextResponse.json({ error: "Not found." }, { status: 404 });
 
+  // Only the host and confirmed participants can see who else is attending.
+  // Without this check any user can enumerate attendees of any event (privacy IDOR).
+  const isHost = post.userId === userId;
+  const isParticipant = requests.some((r) => r.requester.id === userId);
+  if (!isHost && !isParticipant) {
+    return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+  }
+
   // Host first, then accepted requesters — exclude calling user (shown as "You" in the UI)
   // For Rendez events the host is the Rendez system account, not a real participant — skip them.
   const participants: { id: string; name: string; photo: string | null }[] = [];
