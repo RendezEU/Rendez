@@ -57,6 +57,7 @@ export async function GET(req: Request) {
             },
             reputation: {
               select: {
+                reliabilityScore: true,
                 ratingShowUp: true, ratingKindness: true,
                 ratingProfileMatch: true, totalRatings: true,
               },
@@ -137,8 +138,12 @@ export async function GET(req: Request) {
   const sorted = [...typedPosts].sort((a, b) => {
     const tierDiff = sortTier(a) - sortTier(b);
     if (tierDiff !== 0) return tierDiff;
-    // Within same tier: spontaneous first, then by scheduledAt ascending
+    // Within same tier: spontaneous first
     if (a.isSpontaneous !== b.isSpontaneous) return a.isSpontaneous ? -1 : 1;
+    // Higher reliability score surfaces first (default 0.7 for new users)
+    const aRel = a.user.reputation?.reliabilityScore ?? 0.7;
+    const bRel = b.user.reputation?.reliabilityScore ?? 0.7;
+    if (Math.abs(aRel - bRel) > 0.05) return bRel - aRel;
     const aTime = a.scheduledAt?.getTime() ?? 0;
     const bTime = b.scheduledAt?.getTime() ?? 0;
     return aTime - bTime;

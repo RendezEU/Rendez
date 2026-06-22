@@ -24,6 +24,17 @@ export async function GET(
           },
         },
         billing: { select: { tier: true } },
+        reputation: {
+          select: {
+            reliabilityScore: true,
+            ratingShowUp: true,
+            ratingKindness: true,
+            ratingProfileMatch: true,
+            totalRatings: true,
+            totalDates: true,
+            totalNoShows: true,
+          },
+        },
       },
     }),
     prisma.match.count({
