@@ -50,7 +50,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ verified: false, reason: "Photo must clearly show your face." });
     }
   } catch {
-    // If AI check fails, fall through and mark verified (fail-open to not block users)
+    // AI check unavailable — do not auto-verify; ask user to retry later
+    return NextResponse.json({ verified: false, reason: "Verification service unavailable. Please try again shortly." }, { status: 503 });
   }
 
   await prisma.profile.update({

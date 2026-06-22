@@ -171,6 +171,9 @@ export async function GET(req: Request) {
       requestCount: p._count.matchRequests,
       // Rendez events: any confirmed (PENDING) spot counts — first-come-first-served.
       // Community posts: only ACCEPTED counts — host manually picks, others can still send interest.
+      confirmedCount: p.isRendezEvent
+        ? p.matchRequests.length
+        : p.matchRequests.filter((r) => r.status === "ACCEPTED").length,
       isFull: p.isRendezEvent
         ? p.matchRequests.length >= (p.maxParticipants ?? 1)
         : p.matchRequests.filter((r) => r.status === "ACCEPTED").length >= (p.maxParticipants ?? 1),
@@ -181,7 +184,7 @@ export async function GET(req: Request) {
       femaleCount:       p.isRendezEvent && !p.genderRestriction && !p.isCouplesEvent
                            ? (genderMap.get(p.id)?.femaleCount  ?? 0) : undefined,
       genderSlotMax:     p.isRendezEvent && !p.genderRestriction && !p.isCouplesEvent
-                           ? Math.floor(p.maxParticipants / 2)        : undefined,
+                           ? Math.floor((p.maxParticipants ?? 2) / 2) : undefined,
       // Event type flags
       genderRestriction: p.genderRestriction ?? null,
       isCouplesEvent:    p.isCouplesEvent,

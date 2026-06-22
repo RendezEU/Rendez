@@ -89,15 +89,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ matchId
 
   await triggerMatchEvent(matchId, "new-message", message);
 
-  // Push notification to the other user
+  // Push notification to the other user — fire-and-forget so push latency never delays message delivery
   const recipientId = match.userAId === userId ? match.userBId : match.userAId;
   const senderName = message.sender.name;
-  await sendPushToUser(
+  sendPushToUser(
     recipientId,
     `New message from ${senderName} 💬`,
     parsed.data.content.length > 80 ? parsed.data.content.slice(0, 80) + "…" : parsed.data.content,
     { matchId, screen: "matches" }
-  );
+  ).catch((e) => console.error("[push] message notification failed", e));
 
   return NextResponse.json(message, { status: 201 });
 }

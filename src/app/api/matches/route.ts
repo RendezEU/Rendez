@@ -14,13 +14,13 @@ async function autoTransitionMatches(userId: string) {
     },
     data: { status: "DATE_ACTIVE" },
   });
-  // DATE_ACTIVE where scheduled time was 3+ hours ago → COMPLETED (matches cron job timing)
-  const fourHoursAgo = new Date(now.getTime() - 3 * 60 * 60 * 1000);
+  // DATE_ACTIVE where scheduled time was 3+ hours ago → COMPLETED
+  const threeHoursAgo = new Date(now.getTime() - 3 * 60 * 60 * 1000);
   await prisma.match.updateMany({
     where: {
       OR: [{ userAId: userId }, { userBId: userId }],
       status: "DATE_ACTIVE",
-      finalizedPlan: { scheduledAt: { lte: fourHoursAgo } },
+      finalizedPlan: { scheduledAt: { lte: threeHoursAgo } },
     },
     data: { status: "COMPLETED" },
   });
@@ -41,7 +41,7 @@ export async function GET(req: Request) {
   const userId = auth;
 
   // Auto-transition statuses based on scheduled time
-  await autoTransitionMatches(userId).catch(() => {});
+  await autoTransitionMatches(userId).catch((e) => console.error("[autoTransition]", e));
 
   const matches = await prisma.match.findMany({
     where: {

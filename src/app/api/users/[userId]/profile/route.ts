@@ -8,9 +8,10 @@ export async function GET(
 ) {
   const authCheck = await requireAuth(req);
   if (authCheck instanceof NextResponse) return authCheck;
+  const requesterId = authCheck;
   const { userId } = await params;
 
-  const [user, datesCompleted] = await Promise.all([
+  const [user, datesCompleted, block] = await Promise.all([
     prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -31,9 +32,20 @@ export async function GET(
         status: { in: ["COMPLETED", "CONNECTED"] },
       },
     }),
+    // Check if either user has blocked the other
+    prisma.block.findFirst({
+      where: {
+        OR: [
+          { blockerId: requesterId, blockedId: userId },
+          { blockerId: userId, blockedId: requesterId },
+        ],
+      },
+      select: { id: true },
+    }),
   ]);
 
   if (!user) return NextResponse.json({ error: "Not found." }, { status: 404 });
+  if (block) return NextResponse.json({ error: "Not found." }, { status: 404 });
 
   return NextResponse.json({ ...user, tier: user.billing?.tier ?? "FREE", datesCompleted });
 }

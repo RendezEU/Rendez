@@ -93,6 +93,7 @@ export async function GET(
     createdAt: post.createdAt,
     creator: post.user,
     requestCount: post._count.matchRequests,
+    confirmedCount: acceptedCount,
     isFull: acceptedCount >= (post.maxParticipants ?? 1),
     myRequest: !!myRequest,
     maleCount,

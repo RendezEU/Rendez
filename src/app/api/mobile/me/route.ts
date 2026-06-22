@@ -41,6 +41,7 @@ export async function GET(req: Request) {
       email: user.email,
       name: user.name,
       onboardingComplete: user.onboardingComplete,
+      hasPhoto: (user.profile?.photos?.length ?? 0) > 0,
       tier: user.billing?.tier ?? "FREE",
       matchCredits: (user.billing?.freeCreditsRemaining ?? 0) + (user.billing?.purchasedCredits ?? 0),
       profile: user.profile,
