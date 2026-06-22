@@ -352,6 +352,7 @@ model ActivityPost {
   genderRestriction  Gender?
   // Couples events: participants join as a couple (+1 partner doesn't need an account)
   isCouplesEvent     Boolean          @default(false)
+  viewCount        Int              @default(0)
   matchRequests    FeedMatchRequest[]
   eventMessages    EventMessage[]
   reports          Report[]

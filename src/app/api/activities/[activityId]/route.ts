@@ -98,6 +98,7 @@ export async function GET(
     maleCount,
     femaleCount,
     genderSlotMax,
+    viewCount: post.viewCount,
   });
 }
 
