@@ -384,6 +384,7 @@ model FeedMatchRequest {
   createdAt      DateTime     @default(now())
 
   @@unique([activityPostId, requesterId])
+  @@unique([matchId])    // one Match per acceptance — prevents two activities sharing the same chat
   @@index([requesterId])
   @@index([activityPostId, isWaitlist, isPriority, createdAt])
 }
