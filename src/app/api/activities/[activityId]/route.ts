@@ -33,15 +33,18 @@ export async function GET(
 
   if (!post) return NextResponse.json({ error: "Not found." }, { status: 404 });
 
-  // Check if requesting user already sent interest + count confirmed spots for isFull
+  // Check if requesting user already sent interest + count confirmed spots for isFull.
+  // Rendez events: PENDING counts (first-come-first-served, no manual accept).
+  // Community posts: only ACCEPTED counts (host manually picks).
+  const confirmedWhere = post.isRendezEvent
+    ? { activityPostId: activityId, isWaitlist: false, status: { not: "DECLINED" } }
+    : { activityPostId: activityId, isWaitlist: false, status: "ACCEPTED" as const };
   const [myRequest, acceptedCount] = await Promise.all([
     prisma.feedMatchRequest.findUnique({
       where: { activityPostId_requesterId: { activityPostId: activityId, requesterId: userId } },
       select: { id: true },
     }),
-    prisma.feedMatchRequest.count({
-      where: { activityPostId: activityId, isWaitlist: false, status: { not: "DECLINED" } },
-    }),
+    prisma.feedMatchRequest.count({ where: confirmedWhere }),
   ]);
 
   // Gender counts for open Rendez events (shown as men/women bar in detail screen)

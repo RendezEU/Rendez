@@ -65,10 +65,11 @@ export async function GET(req: Request) {
           },
         },
         _count: { select: { matchRequests: true } },
-        // Non-waitlist, non-declined — matches the capacity check in the join route
+        // Fetch all non-waitlist, non-declined requests with status so isFull
+        // can be computed differently for Rendez events vs community posts.
         matchRequests: {
           where: { isWaitlist: false, status: { not: "DECLINED" } },
-          select: { id: true },
+          select: { id: true, status: true },
         },
       },
     }),
@@ -168,8 +169,11 @@ export async function GET(req: Request) {
         tier: p.user.billing?.tier ?? "FREE",
       },
       requestCount: p._count.matchRequests,
-      // isFull is true only when accepted (not pending/declined) requests fill all spots
-      isFull: p.matchRequests.length >= (p.maxParticipants ?? 1),
+      // Rendez events: any confirmed (PENDING) spot counts — first-come-first-served.
+      // Community posts: only ACCEPTED counts — host manually picks, others can still send interest.
+      isFull: p.isRendezEvent
+        ? p.matchRequests.length >= (p.maxParticipants ?? 1)
+        : p.matchRequests.filter((r) => r.status === "ACCEPTED").length >= (p.maxParticipants ?? 1),
       myRequest: myRequestedIds.has(p.id),
       // Gender balance fields — only meaningful for open Rendez events
       maleCount:         p.isRendezEvent && !p.genderRestriction && !p.isCouplesEvent

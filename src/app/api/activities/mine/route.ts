@@ -12,7 +12,7 @@ export async function GET(req: Request) {
     orderBy: { scheduledAt: "asc" },
     include: {
       _count: { select: { matchRequests: true } },
-      matchRequests: { where: { isWaitlist: false, status: { not: "DECLINED" } }, select: { id: true } },
+      matchRequests: { where: { isWaitlist: false, status: { not: "DECLINED" } }, select: { id: true, status: true } },
     },
   });
 
@@ -36,7 +36,7 @@ export async function GET(req: Request) {
       createdAt: p.createdAt.toISOString(),
       isPast: p.scheduledAt ? p.scheduledAt < new Date() : false,
       requestCount: p._count.matchRequests,
-      isFull: p.matchRequests.length >= (p.maxParticipants ?? 1),
+      isFull: p.matchRequests.filter((r) => r.status === "ACCEPTED").length >= (p.maxParticipants ?? 1),
       myRequest: false, // it's the user's own post
     }))
   );
