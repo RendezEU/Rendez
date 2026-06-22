@@ -67,9 +67,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ matchId
   };
   try {
     message = await prisma.$transaction(async (tx) => {
-      const myCount = await tx.message.count({ where: { matchId, senderId: userId } });
-      if (myCount >= maxMessages) {
-        throw Object.assign(new Error("MESSAGE_LIMIT_REACHED"), { isLimit: true });
+      // Event day: limit is lifted — unlimited messaging when DATE_ACTIVE
+      if (match.status !== "DATE_ACTIVE") {
+        const myCount = await tx.message.count({ where: { matchId, senderId: userId } });
+        if (myCount >= maxMessages) {
+          throw Object.assign(new Error("MESSAGE_LIMIT_REACHED"), { isLimit: true });
+        }
       }
       const totalCount = await tx.message.count({ where: { matchId } });
       return tx.message.create({
