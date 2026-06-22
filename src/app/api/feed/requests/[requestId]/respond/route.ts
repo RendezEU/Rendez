@@ -49,21 +49,6 @@ export async function POST(
     return NextResponse.json({ ok: true });
   }
 
-  // Prevent duplicate active matches between the same pair
-  const existingMatch = await prisma.match.findFirst({
-    where: {
-      OR: [
-        { userAId: userId, userBId: feedRequest.requesterId },
-        { userAId: feedRequest.requesterId, userBId: userId },
-      ],
-      status: { notIn: ["COMPLETED", "CANCELLED", "REJECTED", "EXPIRED"] },
-    },
-  });
-  if (existingMatch) {
-    await prisma.feedMatchRequest.update({ where: { id: requestId }, data: { status: "ACCEPTED", matchId: existingMatch.id } });
-    return NextResponse.json({ ok: true, matchId: existingMatch.id });
-  }
-
   // Create a COORDINATING match — both sides have agreed
   const post = feedRequest.activityPost;
   const hasPresetTime = !!post.scheduledAt;
