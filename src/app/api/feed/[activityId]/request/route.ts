@@ -22,19 +22,42 @@ export async function POST(req: Request, { params }: { params: Promise<{ activit
   const parsed = schema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ error: "Invalid." }, { status: 400 });
 
-  const [post, requesterUser, billing] = await Promise.all([
+  const [post, requesterUser, billing, reputation] = await Promise.all([
     prisma.activityPost.findUnique({ where: { id: activityId } }),
     prisma.user.findUnique({
       where: { id: userId },
       select: { name: true, profile: { select: { gender: true } } },
     }),
     prisma.billing.findUnique({ where: { userId } }),
+    prisma.reputation.findUnique({
+      where: { userId },
+      select: { reliabilityScore: true, totalRatings: true },
+    }),
   ]);
 
   if (!post || !post.isActive) return NextResponse.json({ error: "Post not found." }, { status: 404 });
   if (post.userId === userId) return NextResponse.json({ error: "Cannot request your own post." }, { status: 400 });
 
   const isPremium = billing?.tier === "PREMIUM";
+
+  // ── Low-trust concurrent join cap ─────────────────────────────────────────
+  // Users with <60% reliability (min 3 ratings) can only have 1 active join at a time.
+  if (!isPremium && reputation && (reputation.totalRatings ?? 0) >= 3 && (reputation.reliabilityScore ?? 1) < 0.6) {
+    const activeCount = await prisma.feedMatchRequest.count({
+      where: {
+        requesterId: userId,
+        isWaitlist: false,
+        status: { not: "DECLINED" },
+        activityPost: { isActive: true, expiresAt: { gt: new Date() } },
+      },
+    });
+    if (activeCount >= 1) {
+      return NextResponse.json(
+        { error: "LOW_TRUST_LIMIT", message: "Complete your current commitment first to rebuild your trust score." },
+        { status: 429 }
+      );
+    }
+  }
 
   // ── Gender restriction check ───────────────────────────────────────────────
   if (post.genderRestriction) {

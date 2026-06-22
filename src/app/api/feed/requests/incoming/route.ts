@@ -38,6 +38,12 @@ export async function GET(req: Request) {
               promptAnswers: { select: { promptKey: true, answer: true } },
             },
           },
+          reputation: {
+            select: {
+              reliabilityScore: true,
+              totalRatings: true,
+            },
+          },
         },
       },
     },
