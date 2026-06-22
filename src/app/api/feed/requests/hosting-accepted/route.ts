@@ -37,16 +37,29 @@ export async function GET(req: Request) {
     orderBy: { createdAt: "desc" },
   });
 
+  // For flexible activities, use the FinalizedPlan's agreed time/location if set.
+  const matchIds = requests.map((r) => r.matchId).filter(Boolean) as string[];
+  const plans = matchIds.length
+    ? await prisma.finalizedPlan.findMany({
+        where: { matchId: { in: matchIds } },
+        select: { matchId: true, scheduledAt: true, locationName: true },
+      })
+    : [];
+  const planByMatchId = new Map(plans.map((p) => [p.matchId, p]));
+
   return NextResponse.json(
-    requests.map((r) => ({
-      activityPostId: r.activityPost.id,
-      matchId: r.matchId ?? null,
-      title: r.activityPost.title,
-      category: r.activityPost.activityCategory,
-      locationName: r.activityPost.locationName,
-      scheduledAt: r.activityPost.scheduledAt,
-      otherName: r.requester.name ?? "Someone",
-      otherPhoto: r.requester.profile?.photos?.[0]?.url ?? null,
-    }))
+    requests.map((r) => {
+      const plan = r.matchId ? planByMatchId.get(r.matchId) : undefined;
+      return {
+        activityPostId: r.activityPost.id,
+        matchId: r.matchId ?? null,
+        title: r.activityPost.title,
+        category: r.activityPost.activityCategory,
+        locationName: plan?.locationName ?? r.activityPost.locationName,
+        scheduledAt: plan?.scheduledAt?.toISOString() ?? r.activityPost.scheduledAt,
+        otherName: r.requester.name ?? "Someone",
+        otherPhoto: r.requester.profile?.photos?.[0]?.url ?? null,
+      };
+    })
   );
 }

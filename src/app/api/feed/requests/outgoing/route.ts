@@ -82,32 +82,46 @@ export async function GET(req: Request) {
     orderBy: { createdAt: "desc" },
   });
 
+  // For flexible activities with no scheduled time, surface the agreed time from
+  // the FinalizedPlan if the users already confirmed a time in chat.
+  const matchIds = requests.map((r) => r.matchId).filter(Boolean) as string[];
+  const plans = matchIds.length
+    ? await prisma.finalizedPlan.findMany({
+        where: { matchId: { in: matchIds } },
+        select: { matchId: true, scheduledAt: true, locationName: true },
+      })
+    : [];
+  const planByMatchId = new Map(plans.map((p) => [p.matchId, p]));
+
   return NextResponse.json(
-    requests.map((r) => ({
-      id: r.id,
-      status: r.status,
-      matchId: r.matchId ?? null,
-      createdAt: r.createdAt,
-      activityPost: {
-        id: r.activityPost.id,
-        activityCategory: r.activityPost.activityCategory,
-        title: r.activityPost.title,
-        description: r.activityPost.description,
-        activityIntent: r.activityPost.activityIntent,
-        maxParticipants: r.activityPost.maxParticipants,
-        locationName: r.activityPost.locationName,
-        scheduledAt: r.activityPost.scheduledAt,
-        isRecurring: r.activityPost.isRecurring,
-        recurringDayOfWeek: r.activityPost.recurringDayOfWeek,
-        isFlexible: r.activityPost.isFlexible,
-        isSpontaneous: r.activityPost.isSpontaneous,
-        isRendezEvent: r.activityPost.isRendezEvent,
-      },
-      host: {
-        id: r.activityPost.user.id,
-        name: r.activityPost.user.name ?? "Unknown",
-        profile: r.activityPost.user.profile,
-      },
-    }))
+    requests.map((r) => {
+      const plan = r.matchId ? planByMatchId.get(r.matchId) : undefined;
+      return {
+        id: r.id,
+        status: r.status,
+        matchId: r.matchId ?? null,
+        createdAt: r.createdAt,
+        activityPost: {
+          id: r.activityPost.id,
+          activityCategory: r.activityPost.activityCategory,
+          title: r.activityPost.title,
+          description: r.activityPost.description,
+          activityIntent: r.activityPost.activityIntent,
+          maxParticipants: r.activityPost.maxParticipants,
+          locationName: plan?.locationName ?? r.activityPost.locationName,
+          scheduledAt: plan?.scheduledAt?.toISOString() ?? r.activityPost.scheduledAt,
+          isRecurring: r.activityPost.isRecurring,
+          recurringDayOfWeek: r.activityPost.recurringDayOfWeek,
+          isFlexible: r.activityPost.isFlexible,
+          isSpontaneous: r.activityPost.isSpontaneous,
+          isRendezEvent: r.activityPost.isRendezEvent,
+        },
+        host: {
+          id: r.activityPost.user.id,
+          name: r.activityPost.user.name ?? "Unknown",
+          profile: r.activityPost.user.profile,
+        },
+      };
+    })
   );
 }
