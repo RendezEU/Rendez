@@ -7,6 +7,9 @@ import { z } from "zod";
 
 const schema = z.object({ content: z.string().min(1).max(500) });
 
+const RATE_WINDOW_SECS = 5;
+const RATE_MAX_PER_WINDOW = 2;
+
 async function isParticipant(activityPostId: string, userId: string): Promise<boolean> {
   const [request, post] = await Promise.all([
     prisma.feedMatchRequest.findUnique({
@@ -85,6 +88,15 @@ export async function POST(
 
   if (!(await isParticipant(activityId, userId))) {
     return NextResponse.json({ error: "Forbidden." }, { status: 403 });
+  }
+
+  // Rate limit: max 2 messages per 5-second window per user
+  const windowStart = new Date(Date.now() - RATE_WINDOW_SECS * 1000);
+  const recentCount = await prisma.eventMessage.count({
+    where: { activityPostId: activityId, senderId: userId, createdAt: { gte: windowStart } },
+  });
+  if (recentCount >= RATE_MAX_PER_WINDOW) {
+    return NextResponse.json({ error: "Slow down — you're sending too fast." }, { status: 429 });
   }
 
   const message = await prisma.eventMessage.create({
