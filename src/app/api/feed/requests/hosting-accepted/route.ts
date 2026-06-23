@@ -11,6 +11,12 @@ export async function GET(req: Request) {
     where: {
       status: "ACCEPTED",
       activityPost: { userId },
+      // Only surface matches that are still active — exclude completed/connected
+      // so old chats with the same person don't bleed into the home screen
+      OR: [
+        { matchId: null },
+        { match: { status: { notIn: ["COMPLETED", "CONNECTED", "EXPIRED"] } } },
+      ],
     },
     include: {
       activityPost: {

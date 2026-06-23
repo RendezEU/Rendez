@@ -46,7 +46,8 @@ export async function GET(req: Request) {
   const matches = await prisma.match.findMany({
     where: {
       OR: [{ userAId: userId }, { userBId: userId }],
-      status: { not: "EXPIRED" },
+      // Exclude terminal statuses — COMPLETED matches live in diary, EXPIRED ones are dead
+      status: { notIn: ["EXPIRED", "COMPLETED"] },
     },
     include: {
       userA: { select: { id: true, name: true, profile: { include: { photos: true, promptAnswers: true } } } },

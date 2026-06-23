@@ -41,9 +41,14 @@ export async function GET(req: Request) {
   const requests = await prisma.feedMatchRequest.findMany({
     where: {
       requesterId: userId,
-      status: { in: ["PENDING", "ACCEPTED", "DECLINED"] },
       // Rendez event joins are confirmed automatically — they live on the Home tab, not here
       activityPost: { isRendezEvent: false },
+      // PENDING and DECLINED always show; ACCEPTED only when the linked match is still active
+      OR: [
+        { status: { in: ["PENDING", "DECLINED"] } },
+        { status: "ACCEPTED", matchId: null },
+        { status: "ACCEPTED", match: { status: { notIn: ["COMPLETED", "CONNECTED", "EXPIRED"] } } },
+      ],
     },
     include: {
       activityPost: {
