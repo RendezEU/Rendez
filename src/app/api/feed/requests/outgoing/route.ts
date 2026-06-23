@@ -38,6 +38,15 @@ export async function GET(req: Request) {
     }
   }
 
+  // Pre-fetch terminal match IDs so we can exclude stale accepted requests.
+  // FeedMatchRequest has no explicit Prisma relation to Match, so we filter
+  // by matchId directly rather than through a relation.
+  const terminalMatches = await prisma.match.findMany({
+    where: { status: { in: ["COMPLETED", "CONNECTED", "EXPIRED"] } },
+    select: { id: true },
+  });
+  const terminalIds = terminalMatches.map((m) => m.id);
+
   const requests = await prisma.feedMatchRequest.findMany({
     where: {
       requesterId: userId,
@@ -47,7 +56,7 @@ export async function GET(req: Request) {
       OR: [
         { status: { in: ["PENDING", "DECLINED"] } },
         { status: "ACCEPTED", matchId: null },
-        { status: "ACCEPTED", match: { status: { notIn: ["COMPLETED", "CONNECTED", "EXPIRED"] } } },
+        { status: "ACCEPTED", matchId: { notIn: terminalIds } },
       ],
     },
     include: {

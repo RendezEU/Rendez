@@ -7,15 +7,23 @@ export async function GET(req: Request) {
   if (auth instanceof NextResponse) return auth;
   const userId = auth;
 
+  // Collect IDs of matches that are no longer active so we can exclude their
+  // linked FeedMatchRequests. FeedMatchRequest has no explicit Prisma relation
+  // to Match, so we filter by matchId instead of by relation.
+  const terminalMatches = await prisma.match.findMany({
+    where: { status: { in: ["COMPLETED", "CONNECTED", "EXPIRED"] } },
+    select: { id: true },
+  });
+  const terminalIds = terminalMatches.map((m) => m.id);
+
   const requests = await prisma.feedMatchRequest.findMany({
     where: {
       status: "ACCEPTED",
       activityPost: { userId },
-      // Only surface matches that are still active — exclude completed/connected
-      // so old chats with the same person don't bleed into the home screen
+      // Only surface requests for active matches
       OR: [
         { matchId: null },
-        { match: { status: { notIn: ["COMPLETED", "CONNECTED", "EXPIRED"] } } },
+        { matchId: { notIn: terminalIds } },
       ],
     },
     include: {
